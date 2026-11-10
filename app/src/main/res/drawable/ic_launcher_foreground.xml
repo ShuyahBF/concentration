@@ -1,0 +1,6 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Pictogramme : cible de concentration (deux cercles et un point) -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,28 A26,26 0 1 0 54,80 A26,26 0 1 0 54,28 Z M54,36 A18,18 0 1 1 54,72 A18,18 0 1 1 54,36 Z" />
+    <path android:fillColor="#F6A35B" android:pathData="M54,46 A8,8 0 1 0 54,62 A8,8 0 1 0 54,46 Z" />
+</vector>

@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Concentration</string>
+    <string name="description_verrou">Concentration : pendant les plages horaires choisies, ramène à l\'accueil les applications bloquées. Aucun contenu d\'écran n\'est lu.</string>
+</resources>
