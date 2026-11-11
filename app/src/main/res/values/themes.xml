@@ -1,3 +1,5 @@
 <resources>
     <style name="Theme.Concentration" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Fenêtre flottante (état) -->
+    <style name="Theme.Concentration.Dialogue" parent="android:Theme.Material.Light.Dialog.NoActionBar" />
 </resources>

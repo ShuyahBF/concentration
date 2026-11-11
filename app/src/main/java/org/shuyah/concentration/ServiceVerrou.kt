@@ -28,5 +28,16 @@ class ServiceVerrou : AccessibilityService() {
         startActivity(Intent(this, EcranBloque::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
     }
 
+    /** Le bouton d'accessibilité (Xiaomi : bouton rond sur le bord de l'écran) ouvre la fenêtre « État » de Concentration. */
+    override fun onServiceConnected() {
+        try {
+            accessibilityButtonController.registerAccessibilityButtonCallback(object : android.accessibilityservice.AccessibilityButtonController.AccessibilityButtonCallback() {
+                override fun onClicked(controller: android.accessibilityservice.AccessibilityButtonController) {
+                    startActivity(Intent(this@ServiceVerrou, EcranEtat::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+                }
+            })
+        } catch (e: Exception) { /* appareil sans bouton d'accessibilité */ }
+    }
+
     override fun onInterrupt() {}
 }

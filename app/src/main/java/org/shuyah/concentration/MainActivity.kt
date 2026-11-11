@@ -63,6 +63,9 @@ private fun accesNotifications(c: Context) = Settings.Secure.getString(c.content
 /** Vrai si le service d'accessibilité (verrou) est activé. */
 private fun accessibiliteActive(c: Context) = Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(c.packageName + "/") == true
 
+/** Vrai si Concentration est exclue de l'économie de batterie (« Aucune restriction » : le système ne l'arrête plus). */
+private fun batterieLibre(c: Context) = (c.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(c.packageName)
+
 /** Ouvre un écran de réglages ; si l'appareil ne l'a pas, ouvre la fiche de l'application. */
 private fun ouvrir(c: Context, i: Intent) {
     try { c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {
@@ -86,6 +89,7 @@ private fun Ecran(retour: Int) {
     val sauverPlages = { Reglages.plages(c, plages.toList()) }
     val okNotif = remember(retour) { accesNotifications(c) }
     val okAcces = remember(retour) { accessibiliteActive(c) }
+    val okBatterie = remember(retour) { batterieLibre(c) }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
     Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)).verticalScroll(rememberScrollState()).padding(16.dp).statusBarsPadding().navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,6 +101,7 @@ private fun Ecran(retour: Int) {
                     Text("Concentration", color = Color.White, fontSize = 20.sp)
                     Text(when {
                         !actif -> "Désactivée"
+                        Reglages.enPause(c) -> "En pause (reprise à ${heureDe(Reglages.pauseJusqua(c))})"
                         restant != null -> "En cours : encore ${restant / 60} h ${"%02d".format(restant % 60)} (jusqu'à ${heureFin(restant)})"
                         plages.isEmpty() -> "Aucune plage horaire"
                         else -> "En attente de la prochaine plage"
@@ -104,6 +109,11 @@ private fun Ecran(retour: Int) {
                 }
                 Switch(actif, { actif = it; Reglages.actif(c, it) })
             }
+            // Notifications retardées par application (plage en cours ou dernière plage)
+            val cpt = remember(maintenant, retour) { Reglages.compteurs(c) }
+            if (cpt.isNotEmpty()) Text("Notifications retardées : " + cpt.entries.joinToString(" · ") { (p, n) ->
+                (try { c.packageManager.getApplicationLabel(c.packageManager.getApplicationInfo(p, 0)).toString() } catch (e: Exception) { p }) + " " + n },
+                color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
         }
 
         // ---- Plages horaires ----
@@ -162,14 +172,20 @@ private fun Ecran(retour: Int) {
             Autorisation("Service d'accessibilité « Concentration (verrou) »", okAcces) { ouvrir(c, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         }
 
-        // ---- Conseils Xiaomi ----
+        // ---- Xiaomi : rester actif en arrière-plan ----
         Section("Xiaomi : pour que ça reste actif", Icons.Filled.PhoneAndroid) {
-            Text("Autorisez le démarrage automatique et mettez l'économie de batterie sur « Aucune restriction », sinon le système peut arrêter Concentration.", fontSize = 13.sp, color = Color(0xFF475569))
+            // 1. Batterie : un appui ouvre la fenêtre du système « Autoriser Concentration à toujours fonctionner en arrière-plan ? » → Autoriser
+            Autorisation("Batterie sans restriction", okBatterie) {
+                ouvrir(c, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + c.packageName)))
+            }
+            Text("Si le téléphone n'affiche pas de fenêtre, ouvrez la fiche de l'application → « Économiseur de batterie » → « Aucune restriction ».", fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 4.dp, start = 34.dp))
+            // 2. Démarrage automatique (non vérifiable par l'application) et fiche de l'application
+            Text("Démarrage automatique : à activer pour Concentration (réglage de Xiaomi, non vérifiable ici).", fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 10.dp))
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Action(Icons.Filled.PowerSettingsNew, "Démarrage auto") {
                     ouvrir(c, Intent().setComponent(ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")))
                 }
-                Action(Icons.Filled.BatteryFull, "Batterie") { ouvrir(c, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + c.packageName))) }
+                Action(Icons.Filled.Info, "Fiche appli") { ouvrir(c, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + c.packageName))) }
             }
         }
         Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
@@ -180,6 +196,12 @@ private fun Ecran(retour: Int) {
         "bloquees" -> ChoixApplications("Applications à bloquer", bloquees, { choix = null }) { bloquees = it; Reglages.bloquees(c, it); choix = null }
         "autorisees" -> ChoixApplications("Applications autorisées", autorisees, { choix = null }) { autorisees = it; Reglages.autorisees(c, it); choix = null }
     }
+}
+
+/** « 07:00 » à partir d'un instant en millisecondes. */
+private fun heureDe(ms: Long): String {
+    val cal = java.util.Calendar.getInstance().apply { timeInMillis = ms }
+    return "%02d:%02d".format(cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
 }
 
 /** Heure de fin « 07:00 » à partir des minutes restantes. */

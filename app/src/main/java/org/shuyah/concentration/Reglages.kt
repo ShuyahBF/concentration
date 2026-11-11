@@ -42,9 +42,29 @@ object Reglages {
     }
     fun plages(c: Context, v: List<Plage>) = p(c).edit().putString("plages", v.joinToString(";") { it.versTexte() }).apply()
 
-    /** Minutes restantes avant la fin de la plage en cours, ou null si la concentration n'est pas active maintenant. */
+    /** Pause : la concentration est suspendue jusqu'à cet instant (millisecondes) ; 0 = pas de pause. */
+    fun pauseJusqua(c: Context) = p(c).getLong("pauseJusqua", 0L)
+    fun pauseJusqua(c: Context, v: Long) = p(c).edit().putLong("pauseJusqua", v).apply()
+    fun enPause(c: Context) = pauseJusqua(c) > System.currentTimeMillis()
+
+    /**
+     * Compteurs de notifications retardées, par application, pour la plage EN COURS (remis à zéro quand une nouvelle plage commence).
+     * `finMs` identifie la plage (instant de sa fin, à la minute).
+     */
+    fun compter(c: Context, paquet: String, finMs: Long) {
+        val prefs = p(c)
+        val memeplage = prefs.getLong("compteursFin", 0L) == finMs
+        val m = if (memeplage) compteurs(c).toMutableMap() else mutableMapOf()
+        m[paquet] = (m[paquet] ?: 0) + 1
+        prefs.edit().putLong("compteursFin", finMs).putString("compteurs", m.entries.joinToString(";") { it.key + "=" + it.value }).apply()
+    }
+    /** Nombre de notifications retardées par application (plage en cours, ou dernière plage terminée). */
+    fun compteurs(c: Context): Map<String, Int> = (p(c).getString("compteurs", "") ?: "").split(";").mapNotNull {
+        val kv = it.split("="); if (kv.size == 2) kv[1].toIntOrNull()?.let { n -> kv[0] to n } else null }.toMap()
+
+    /** Minutes restantes avant la fin de la plage en cours, ou null si la concentration n'est pas active maintenant (désactivée ou en pause). */
     fun minutesRestantes(c: Context): Int? {
-        if (!actif(c)) return null
+        if (!actif(c) || enPause(c)) return null
         val (jour, min) = Plage.jourEtMinutes()
         return plages(c).mapNotNull { it.minutesRestantes(jour, min) }.maxOrNull()
     }
