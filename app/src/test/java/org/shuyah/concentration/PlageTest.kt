@@ -44,4 +44,13 @@ class PlageTest {
         assertEquals(11 * 60, Plage.minutesAvantChangement(listOf(nuit), 2, 20 * 60))        // 20:00 → sortie à 07:00
         assertNull(Plage.minutesAvantChangement(emptyList(), 2, 600))                         // aucune plage : jamais de changement
     }
+
+    @Test fun sonsDesChangementsDEtat() {
+        assertEquals(Sons.Signal.DEBUT, Sons.signalDe("libre", "active"))
+        assertEquals(Sons.Signal.FIN, Sons.signalDe("active", "libre"))
+        assertEquals(Sons.Signal.PAUSE, Sons.signalDe("active", "pause"))
+        assertEquals(Sons.Signal.REPRISE, Sons.signalDe("pause", "active"))
+        assertEquals(Sons.Signal.FIN, Sons.signalDe("pause", "libre"))
+        assertNull(Sons.signalDe("libre", "pause"))
+    }
 }

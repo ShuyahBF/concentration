@@ -98,7 +98,9 @@ private fun Ecran(retour: Int) {
     val okVpn = remember(retour, tickVpn) { Pare.autorise(c) }
     // Tout changement de réglage met le pare-feu à jour (recréation du tunnel) et reprogramme les réveils
     LaunchedEffect(actif, pareFeu, toutSauf, bloquees, autorisees, plages.toList(), okVpn) { Pare.appliquer(c, forcer = true) }
-    val okBatterie = remember(retour) { batterieLibre(c) }
+    var batterieConfirmee by remember { mutableStateOf(Reglages.batterieConfirmee(c)) }
+    var son by remember { mutableStateOf(Reglages.son(c)) }
+    val okBatterie = remember(retour, batterieConfirmee) { batterieLibre(c) || batterieConfirmee }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
     Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)).verticalScroll(rememberScrollState()).padding(16.dp).statusBarsPadding().navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -146,6 +148,8 @@ private fun Ecran(retour: Int) {
                 }
                 HorizontalDivider()
             }
+            // Son de changement d'état
+            LigneInterrupteur("Émettre un son quand l'état change (début, fin, pause, reprise)", son) { son = it; Reglages.son(c, it) }
             // Ajout : l'heure de début puis l'heure de fin (deux sélecteurs d'heure successifs)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp).clickable {
                 TimePickerDialog(c, { _, h1, m1 ->
@@ -198,7 +202,9 @@ private fun Ecran(retour: Int) {
             Autorisation("Batterie sans restriction", okBatterie) {
                 ouvrir(c, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + c.packageName)))
             }
-            Text("Si le téléphone n'affiche pas de fenêtre, ouvrez la fiche de l'application → « Économiseur de batterie » → « Aucune restriction ».", fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 4.dp, start = 34.dp))
+            // Sur Xiaomi, « Pas de restriction » est un réglage de MIUI : Android ne peut pas le lire, d'où cette confirmation manuelle
+            Text("Xiaomi : dans « Fiche appli » → « Économiseur de batterie », choisissez « Pas de restriction ». Android ne peut pas lire ce réglage : confirmez-le ci-dessous.", fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 4.dp, start = 34.dp))
+            if (!batterieLibre(c)) LigneInterrupteur("C'est fait : la fiche indique « Pas de restriction »", batterieConfirmee) { batterieConfirmee = it; Reglages.batterieConfirmee(c, it) }
             // 2. Démarrage automatique (non vérifiable par l'application) et fiche de l'application
             Text("Démarrage automatique : à activer pour Concentration (réglage de Xiaomi, non vérifiable ici).", fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 10.dp))
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {

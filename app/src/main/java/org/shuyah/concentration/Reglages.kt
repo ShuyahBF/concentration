@@ -66,10 +66,28 @@ object Reglages {
     fun compteurs(c: Context): Map<String, Int> = (p(c).getString("compteurs", "") ?: "").split(";").mapNotNull {
         val kv = it.split("="); if (kv.size == 2) kv[1].toIntOrNull()?.let { n -> kv[0] to n } else null }.toMap()
 
-    /** Minutes restantes avant la fin de la plage en cours, ou null si la concentration n'est pas active maintenant (désactivée ou en pause). */
-    fun minutesRestantes(c: Context): Int? {
-        if (!actif(c) || enPause(c)) return null
+    /** Son émis à chaque changement d'état de la concentration (début, fin, pause, reprise). */
+    fun son(c: Context) = p(c).getBoolean("son", true)
+    fun son(c: Context, v: Boolean) = p(c).edit().putBoolean("son", v).apply()
+
+    /** Dernier état connu (« libre », « active », « pause ») : sert à détecter un changement pour émettre le son. */
+    fun dernierEtat(c: Context): String? = p(c).getString("dernierEtat", null)
+    fun dernierEtat(c: Context, v: String) = p(c).edit().putString("dernierEtat", v).apply()
+
+    /**
+     * Xiaomi : le réglage « Pas de restriction » de la fiche de l'application est propre à MIUI et ne peut pas être lu par Android ;
+     * l'utilisateur le confirme lui-même (la ligne « Batterie » passe alors au vert).
+     */
+    fun batterieConfirmee(c: Context) = p(c).getBoolean("batterieConfirmee", false)
+    fun batterieConfirmee(c: Context, v: Boolean) = p(c).edit().putBoolean("batterieConfirmee", v).apply()
+
+    /** Minutes restantes avant la fin de la plage en cours, sans tenir compte de la pause (null si hors plage ou désactivée). */
+    fun minutesRestantesPlage(c: Context): Int? {
+        if (!actif(c)) return null
         val (jour, min) = Plage.jourEtMinutes()
         return plages(c).mapNotNull { it.minutesRestantes(jour, min) }.maxOrNull()
     }
+
+    /** Minutes restantes avant la fin de la plage en cours, ou null si la concentration n'est pas active maintenant (désactivée ou en pause). */
+    fun minutesRestantes(c: Context): Int? = if (enPause(c)) null else minutesRestantesPlage(c)
 }

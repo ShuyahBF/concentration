@@ -22,6 +22,7 @@ object Pare {
 
     /** Met le tunnel dans l'état voulu. `forcer` : le recrée même s'il est déjà ouvert (liste d'applications modifiée). */
     fun synchroniser(c: Context, forcer: Boolean = false) {
+        Sons.controler(c)                                        // son si l'état a changé (début, fin, pause, reprise)
         try {
             if (voulu(c) && autorise(c)) { if (forcer || !ServiceVpn.actif) c.startService(Intent(c, ServiceVpn::class.java)) }
             else ServiceVpn.instance?.fermer()
@@ -49,5 +50,9 @@ object Pare {
 
 /** Reçoit le réveil programmé, le redémarrage du téléphone et la mise à jour de l'application : remet le pare-feu dans le bon état. */
 class RecepteurPlanning : BroadcastReceiver() {
-    override fun onReceive(c: Context, i: Intent) { Pare.appliquer(c) }
+    override fun onReceive(c: Context, i: Intent) {
+        // goAsync : le récepteur reste en vie le temps du son (sinon le système peut l'arrêter avant la fin de la mélodie)
+        val attente = goAsync()
+        Thread { try { Pare.appliquer(c); Thread.sleep(1500) } finally { attente.finish() } }.start()
+    }
 }
