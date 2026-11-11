@@ -41,6 +41,17 @@ data class Plage(val debut: Int, val fin: Int, val jours: Int = TOUS_LES_JOURS) 
             val p = t.split(",").mapNotNull { it.trim().toIntOrNull() }
             return if (p.size == 3 && p[0] in 0..1439 && p[1] in 0..1439) Plage(p[0], p[1], p[2]) else null
         }
+        /**
+         * Minutes avant le prochain CHANGEMENT d'état (entrée ou sortie d'une plage) parmi ces plages, en partant de cet instant ;
+         * null si l'état ne change jamais dans les 8 jours qui viennent (aucune plage, ou plage permanente).
+         */
+        fun minutesAvantChangement(plages: List<Plage>, jour: Int, minutes: Int): Int? {
+            fun dedans(m: Int) = plages.any { it.contient((jour + (minutes + m) / 1440) % 7, (minutes + m) % 1440) }
+            val etat = dedans(0)
+            for (m in 1..(8 * 1440)) if (dedans(m) != etat) return m
+            return null
+        }
+
         /** Jour (0 = lundi … 6 = dimanche) et minutes depuis minuit d'un instant. */
         fun jourEtMinutes(c: Calendar = Calendar.getInstance()): Pair<Int, Int> =
             Pair((c.get(Calendar.DAY_OF_WEEK) + 5) % 7, c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE))

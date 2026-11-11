@@ -38,4 +38,10 @@ class PlageTest {
         assertNull(Plage.depuisTexte("abc"))
         assertEquals("20:00 → 07:00", nuit.libelle())
     }
+
+    @Test fun prochainChangementDEtat() {
+        assertEquals(60, Plage.minutesAvantChangement(listOf(nuit), 2, 19 * 60))            // 19:00 → entrée à 20:00
+        assertEquals(11 * 60, Plage.minutesAvantChangement(listOf(nuit), 2, 20 * 60))        // 20:00 → sortie à 07:00
+        assertNull(Plage.minutesAvantChangement(emptyList(), 2, 600))                         // aucune plage : jamais de changement
+    }
 }

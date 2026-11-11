@@ -8,9 +8,12 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.Uri
 import android.os.Bundle
+import android.net.VpnService
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -79,6 +82,9 @@ private fun Ecran(retour: Int) {
     var actif by remember { mutableStateOf(Reglages.actif(c)) }
     var notif by remember { mutableStateOf(Reglages.notifications(c)) }
     var verrou by remember { mutableStateOf(Reglages.verrou(c)) }
+    var pareFeu by remember { mutableStateOf(Reglages.pareFeu(c)) }
+    var tickVpn by remember { mutableIntStateOf(0) }                     // relu après la fenêtre d'autorisation VPN
+    val lanceurVpn = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { tickVpn++ }
     var toutSauf by remember { mutableStateOf(Reglages.toutSauf(c)) }
     var bloquees by remember { mutableStateOf(Reglages.bloquees(c)) }
     var autorisees by remember { mutableStateOf(Reglages.autorisees(c)) }
@@ -89,6 +95,9 @@ private fun Ecran(retour: Int) {
     val sauverPlages = { Reglages.plages(c, plages.toList()) }
     val okNotif = remember(retour) { accesNotifications(c) }
     val okAcces = remember(retour) { accessibiliteActive(c) }
+    val okVpn = remember(retour, tickVpn) { Pare.autorise(c) }
+    // Tout changement de réglage met le pare-feu à jour (recréation du tunnel) et reprogramme les réveils
+    LaunchedEffect(actif, pareFeu, toutSauf, bloquees, autorisees, plages.toList(), okVpn) { Pare.appliquer(c, forcer = true) }
     val okBatterie = remember(retour) { batterieLibre(c) }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
@@ -170,6 +179,17 @@ private fun Ecran(retour: Int) {
         Section("Niveau 2 · Verrou des applications", Icons.Filled.Lock) {
             LigneInterrupteur("Empêcher d'ouvrir les applications bloquées", verrou) { verrou = it; Reglages.verrou(c, it) }
             Autorisation("Service d'accessibilité « Concentration (verrou) »", okAcces) { ouvrir(c, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        }
+
+        // ---- Niveau 3 : pare-feu ----
+        Section("Niveau 3 · Pare-feu", Icons.Filled.WifiOff) {
+            LigneInterrupteur("Couper Internet aux applications bloquées pendant la plage (plus aucun message ni appel)", pareFeu) {
+                pareFeu = it; Reglages.pareFeu(c, it)
+                if (it && !Pare.autorise(c)) VpnService.prepare(c)?.let { i -> lanceurVpn.launch(i) }     // fenêtre système de demande VPN
+            }
+            Autorisation("Autorisation VPN (pare-feu local)", okVpn) { VpnService.prepare(c)?.let { i -> lanceurVpn.launch(i) } }
+            Text(if (ServiceVpn.actif) "Pare-feu en cours : les applications bloquées n'ont plus Internet." else "Aucun message ne sort ni n'entre : tout ce qui attend arrive à la fin de la plage. Ce n'est pas un vrai VPN : rien ne quitte le téléphone. Il remplace un autre VPN s'il y en a un.",
+                fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
         }
 
         // ---- Xiaomi : rester actif en arrière-plan ----

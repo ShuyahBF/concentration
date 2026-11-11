@@ -2,11 +2,12 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
-## Fonctions (version 1.1)
+## Fonctions (version 1.3)
 - **Plages horaires** multiples, passant minuit, avec choix des jours (lettres L M M J V S D).
 - **Quelles applications ?** : « celles que je choisis » (par défaut WhatsApp et WhatsApp Business) ou « toutes, sauf celles que j'autorise » (par défaut Claude). Le téléphone, les SMS, le clavier, les réglages et l'écran d'accueil restent toujours libres.
 - **Niveau 1 — Notifications** : les notifications (messages, appels) des applications bloquées sont retardées jusqu'à la fin de la plage (ni son ni bannière) ; les messages arrivent toujours chez WhatsApp.
 - **Niveau 2 — Verrou** : une application bloquée qui s'ouvre est remplacée par l'écran « Concentration » (retour à l'accueil).
+- **Niveau 3 — Pare-feu** (version 1.3) : pendant la plage, les applications bloquées sont dirigées vers un tunnel local (VPN interne) qui jette leurs paquets : **aucun message ni appel** n'entre ni ne sort ; tout ce qui attendait arrive à la fin de la plage. Les autres applications ne sont pas touchées. Rien ne quitte le téléphone. Le tunnel démarre et s'arrête aux heures des plages (réveils exacts, reprise au redémarrage), et à la pause. Nécessite l'autorisation VPN (fenêtre système, une fois) ; remplace un autre VPN actif.
 - **Bouton d'accessibilité** (version 1.1) : ouvre une fenêtre « État » : état de la concentration, pause 15 min / 1 h, réactivation, nombre de notifications retardées par application.
 - **Batterie** : un appui sur « Batterie sans restriction » ouvre la fenêtre du système qui exclut Concentration de l'économie de batterie (état affiché en vert / rouge).
 - Signal de présence à SAWALI (règle 4) ; aucune donnée personnelle.
@@ -17,7 +18,8 @@ Application personnelle pour se concentrer : pendant des **plages horaires** (pa
 3. Xiaomi : démarrage automatique + batterie « Aucune restriction ».
 
 ## Limites
-- Les messages arrivent quand même chez WhatsApp : ils ne sont pas annoncés pendant la plage. Pour empêcher réellement tout message ou appel, il faudra le niveau 3 (pare-feu local par VPN), non réalisé.
+- Sans le niveau 3, les messages arrivent quand même chez WhatsApp : ils ne sont pas annoncés pendant la plage. Avec le niveau 3, WhatsApp n'a plus Internet (les messages attendent chez WhatsApp et arrivent après).
+- Un seul VPN peut être actif à la fois : le niveau 3 remplace un autre VPN pendant la plage.
 - Le blocage peut être levé par vous-même (interrupteur général) : c'est voulu.
 
 ## Compiler

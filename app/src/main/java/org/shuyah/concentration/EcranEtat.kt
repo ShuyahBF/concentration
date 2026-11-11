@@ -55,14 +55,15 @@ class EcranEtat : ComponentActivity() {
             Text(texte, color = couleur, fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp))
             // ---- Actions : pictogrammes ronds avec légende (règle 14) ----
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                if (enPause) Tuile(Icons.Filled.PlayArrow, "Réactiver") { Reglages.pauseJusqua(c, 0L); rafraichir++ }
+                if (enPause) Tuile(Icons.Filled.PlayArrow, "Réactiver") { Reglages.pauseJusqua(c, 0L); Pare.appliquer(c); rafraichir++ }
                 else if (actif) {
-                    Tuile(Icons.Filled.Pause, "Pause 15 min") { Reglages.pauseJusqua(c, System.currentTimeMillis() + 15 * 60_000L); rafraichir++ }
-                    Tuile(Icons.Filled.HourglassBottom, "Pause 1 h") { Reglages.pauseJusqua(c, System.currentTimeMillis() + 60 * 60_000L); rafraichir++ }
-                } else Tuile(Icons.Filled.PlayArrow, "Activer") { Reglages.actif(c, true); rafraichir++ }
+                    Tuile(Icons.Filled.Pause, "Pause 15 min") { Reglages.pauseJusqua(c, System.currentTimeMillis() + 15 * 60_000L); Pare.appliquer(c); rafraichir++ }
+                    Tuile(Icons.Filled.HourglassBottom, "Pause 1 h") { Reglages.pauseJusqua(c, System.currentTimeMillis() + 60 * 60_000L); Pare.appliquer(c); rafraichir++ }
+                } else Tuile(Icons.Filled.PlayArrow, "Activer") { Reglages.actif(c, true); Pare.appliquer(c); rafraichir++ }
                 Tuile(Icons.Filled.Settings, "Réglages") { startActivity(Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)); finish() }
                 Tuile(Icons.Filled.Close, "Fermer") { finish() }
             }
+            if (ServiceVpn.actif) Text("Pare-feu actif : les applications bloquées n'ont plus Internet", fontSize = 12.sp, color = Color(0xFF0E6BA8), modifier = Modifier.padding(top = 12.dp))
             // ---- Notifications retardées ----
             Text("Notifications retardées", color = Color(0xFF0B1F3A), fontSize = 15.sp, modifier = Modifier.padding(top = 18.dp, bottom = 4.dp))
             if (compteurs.isEmpty()) Text("Aucune pour le moment", fontSize = 13.sp, color = Color(0xFF64748B))

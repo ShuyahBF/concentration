@@ -13,10 +13,13 @@ class ServiceVerrou : AccessibilityService() {
     private var libres: Set<String> = emptySet()
     private var libresLe = 0L
     private var dernierBlocage = 0L
+    private var dernierControlePareFeu = 0L
 
     override fun onAccessibilityEvent(e: AccessibilityEvent?) {
         if (e?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val paquet = e.packageName?.toString() ?: return
+        // Contrôle du pare-feu (niveau 3) au plus une fois par minute
+        if (System.currentTimeMillis() - dernierControlePareFeu > 60_000L) { dernierControlePareFeu = System.currentTimeMillis(); Pare.synchroniser(this) }
         if (!Reglages.verrou(this) || Reglages.minutesRestantes(this) == null) return        // verrou éteint ou hors plage
         // La liste des applications toujours libres est recalculée toutes les 5 minutes (le lanceur ou le clavier peuvent changer)
         val maintenant = System.currentTimeMillis()

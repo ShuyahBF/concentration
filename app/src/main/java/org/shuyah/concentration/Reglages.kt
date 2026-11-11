@@ -21,6 +21,10 @@ object Reglages {
     fun verrou(c: Context) = p(c).getBoolean("verrou", false)
     fun verrou(c: Context, v: Boolean) = p(c).edit().putBoolean("verrou", v).apply()
 
+    /** Niveau 3 : pare-feu (coupe l'accès Internet des applications bloquées). */
+    fun pareFeu(c: Context) = p(c).getBoolean("pareFeu", false)
+    fun pareFeu(c: Context, v: Boolean) = p(c).edit().putBoolean("pareFeu", v).apply()
+
     /** Quelles applications ? faux = celles que je choisis (liste « bloquées ») ; vrai = toutes SAUF celles que j'autorise. */
     fun toutSauf(c: Context) = p(c).getBoolean("toutSauf", false)
     fun toutSauf(c: Context, v: Boolean) = p(c).edit().putBoolean("toutSauf", v).apply()
