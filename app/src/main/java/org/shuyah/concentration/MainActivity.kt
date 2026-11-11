@@ -93,16 +93,17 @@ private fun Ecran(retour: Int) {
     LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(20_000); maintenant = System.currentTimeMillis() } }   // état mis à jour toutes les 20 s
     var choix by remember { mutableStateOf<String?>(null) }          // « bloquees » ou « autorisees » : fenêtre de choix des applications ouverte
     val sauverPlages = { Reglages.plages(c, plages.toList()) }
-    val okNotif = remember(retour) { accesNotifications(c) }
-    val okAcces = remember(retour) { accessibiliteActive(c) }
-    val okVpn = remember(retour, tickVpn) { Pare.autorise(c) }
+    // Les états des autorisations sont relus aussi à chaque tick (toutes les 20 s) : sinon une ligne reste rouge alors que le réglage vient de passer au vert
+    val okNotif = remember(retour, maintenant) { accesNotifications(c) }
+    val okAcces = remember(retour, maintenant) { accessibiliteActive(c) }
+    val okVpn = remember(retour, tickVpn, maintenant) { Pare.autorise(c) }
     // Tout changement de réglage met le pare-feu à jour (recréation du tunnel) et reprogramme les réveils
     LaunchedEffect(actif, pareFeu, toutSauf, bloquees, autorisees, plages.toList(), okVpn) { Pare.appliquer(c, forcer = true) }
     var batterieConfirmee by remember { mutableStateOf(Reglages.batterieConfirmee(c)) }
     val contacts = remember { mutableStateListOf(*Reglages.contacts(c).toTypedArray()) }
     var ajoutContact by remember { mutableStateOf(false) }
     var son by remember { mutableStateOf(Reglages.son(c)) }
-    val okBatterie = remember(retour, batterieConfirmee) { batterieLibre(c) || batterieConfirmee }
+    val okBatterie = remember(retour, batterieConfirmee, maintenant) { batterieLibre(c) || batterieConfirmee }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
     Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)).verticalScroll(rememberScrollState()).padding(16.dp).statusBarsPadding().navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -224,7 +225,7 @@ private fun Ecran(retour: Int) {
             }
             // Sur Xiaomi, « Pas de restriction » est un réglage de MIUI : Android ne peut pas le lire, d'où cette confirmation manuelle
             Text("Xiaomi : dans « Fiche appli » → « Économiseur de batterie », choisissez « Pas de restriction ». Android ne peut pas lire ce réglage : confirmez-le ci-dessous.", fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 4.dp, start = 34.dp))
-            if (!batterieLibre(c)) LigneInterrupteur("C'est fait : la fiche indique « Pas de restriction »", batterieConfirmee) { batterieConfirmee = it; Reglages.batterieConfirmee(c, it) }
+            if (!okBatterie || batterieConfirmee) LigneInterrupteur("C'est fait : la fiche indique « Pas de restriction »", batterieConfirmee) { batterieConfirmee = it; Reglages.batterieConfirmee(c, it) }
             // 2. Démarrage automatique (non vérifiable par l'application) et fiche de l'application
             Text("Démarrage automatique : à activer pour Concentration (réglage de Xiaomi, non vérifiable ici).", fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 10.dp))
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
