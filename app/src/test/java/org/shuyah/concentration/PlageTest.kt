@@ -53,4 +53,12 @@ class PlageTest {
         assertEquals(Sons.Signal.FIN, Sons.signalDe("pause", "libre"))
         assertNull(Sons.signalDe("libre", "pause"))
     }
+
+    @Test fun contactsAutorises() {
+        assertTrue(Contacts.correspond(listOf("Liluvine", "Bonjour"), listOf("liluvine")))
+        assertTrue(Contacts.correspond(listOf("Groupe famille", "Éléonore : coucou"), listOf("eleonore")))      // accents et casse ignorés
+        assertFalse(Contacts.correspond(listOf("Client X", "Besoin d'aide"), listOf("Liluvine")))
+        assertFalse(Contacts.correspond(listOf("Liluvine"), emptyList()))
+        assertFalse(Contacts.correspond(listOf("a b c"), listOf("a")))                                          // nom trop court ignoré
+    }
 }

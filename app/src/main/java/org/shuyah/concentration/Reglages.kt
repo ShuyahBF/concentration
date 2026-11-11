@@ -21,6 +21,10 @@ object Reglages {
     fun verrou(c: Context) = p(c).getBoolean("verrou", false)
     fun verrou(c: Context, v: Boolean) = p(c).edit().putBoolean("verrou", v).apply()
 
+    /** Contacts autorisés : leurs notifications ne sont pas retardées (un nom par ligne, tel qu'il s'affiche dans WhatsApp). */
+    fun contacts(c: Context): List<String> = (p(c).getString("contacts", "") ?: "").split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+    fun contacts(c: Context, v: List<String>) = p(c).edit().putString("contacts", v.joinToString("\n")).apply()
+
     /** Niveau 3 : pare-feu (coupe l'accès Internet des applications bloquées). */
     fun pareFeu(c: Context) = p(c).getBoolean("pareFeu", false)
     fun pareFeu(c: Context, v: Boolean) = p(c).edit().putBoolean("pareFeu", v).apply()

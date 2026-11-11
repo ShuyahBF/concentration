@@ -99,6 +99,8 @@ private fun Ecran(retour: Int) {
     // Tout changement de réglage met le pare-feu à jour (recréation du tunnel) et reprogramme les réveils
     LaunchedEffect(actif, pareFeu, toutSauf, bloquees, autorisees, plages.toList(), okVpn) { Pare.appliquer(c, forcer = true) }
     var batterieConfirmee by remember { mutableStateOf(Reglages.batterieConfirmee(c)) }
+    val contacts = remember { mutableStateListOf(*Reglages.contacts(c).toTypedArray()) }
+    var ajoutContact by remember { mutableStateOf(false) }
     var son by remember { mutableStateOf(Reglages.son(c)) }
     val okBatterie = remember(retour, batterieConfirmee) { batterieLibre(c) || batterieConfirmee }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
@@ -179,6 +181,24 @@ private fun Ecran(retour: Int) {
             Autorisation("Accès aux notifications", okNotif) { ouvrir(c, Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")) }
         }
 
+        // ---- Contacts autorisés (exceptions du niveau 1) ----
+        Section("Contacts autorisés", Icons.Filled.Contacts) {
+            Text("Leurs messages et appels sonnent normalement pendant la plage (niveau 1). Écrivez le nom tel qu'il s'affiche dans WhatsApp.", fontSize = 13.sp, color = Color(0xFF475569))
+            contacts.forEachIndexed { i, n ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    Icon(Icons.Filled.Person, null, tint = Bleu, modifier = Modifier.size(24.dp))
+                    Text(n, Modifier.weight(1f).padding(horizontal = 8.dp), color = BleuNuit)
+                    Icon(Icons.Filled.Delete, "Retirer ce contact", tint = Rouge, modifier = Modifier.size(26.dp).clickable { contacts.removeAt(i); Reglages.contacts(c, contacts.toList()) })
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp).clickable { ajoutContact = true }) {
+                Pastille(Icons.Filled.PersonAdd, Orange, BleuNuit, 40)
+                Text("Ajouter un contact", color = BleuNuit, modifier = Modifier.padding(start = 12.dp))
+            }
+            if (contacts.isNotEmpty() && (verrou || pareFeu)) Text("Attention : le verrou (niveau 2) empêche d'ouvrir WhatsApp et le pare-feu (niveau 3) coupe aussi ces contacts. Pour les laisser passer, utilisez le niveau 1 seul.",
+                fontSize = 12.sp, color = Rouge, modifier = Modifier.padding(top = 8.dp))
+        }
+
         // ---- Niveau 2 ----
         Section("Niveau 2 · Verrou des applications", Icons.Filled.Lock) {
             LigneInterrupteur("Empêcher d'ouvrir les applications bloquées", verrou) { verrou = it; Reglages.verrou(c, it) }
@@ -215,6 +235,18 @@ private fun Ecran(retour: Int) {
             }
         }
         Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+    }
+
+    // Fenêtre d'ajout d'un contact autorisé
+    if (ajoutContact) {
+        var nom by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { ajoutContact = false },
+            title = { Text("Ajouter un contact") },
+            text = { OutlinedTextField(nom, { nom = it }, singleLine = true, placeholder = { Text("Nom dans WhatsApp") }) },
+            confirmButton = { Action(Icons.Filled.Check, "Valider") { if (nom.trim().length >= 2) { contacts.add(nom.trim()); Reglages.contacts(c, contacts.toList()) }; ajoutContact = false } },
+            dismissButton = { Action(Icons.Filled.Close, "Annuler") { ajoutContact = false } }
+        )
     }
 
     // Fenêtre de choix des applications (liste cochable avec recherche)
