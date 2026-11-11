@@ -60,7 +60,7 @@ class EcranEtat : ComponentActivity() {
                     Tuile(Icons.Filled.Pause, "Pause 15 min") { Reglages.pauseJusqua(c, System.currentTimeMillis() + 15 * 60_000L); rafraichir++ }
                     Tuile(Icons.Filled.HourglassBottom, "Pause 1 h") { Reglages.pauseJusqua(c, System.currentTimeMillis() + 60 * 60_000L); rafraichir++ }
                 } else Tuile(Icons.Filled.PlayArrow, "Activer") { Reglages.actif(c, true); rafraichir++ }
-                Tuile(Icons.Filled.Settings, "Réglages") { startActivity(Intent(c, MainActivity::class.java)); finish() }
+                Tuile(Icons.Filled.Settings, "Réglages") { startActivity(Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)); finish() }
                 Tuile(Icons.Filled.Close, "Fermer") { finish() }
             }
             // ---- Notifications retardées ----
