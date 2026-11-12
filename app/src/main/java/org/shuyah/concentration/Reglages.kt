@@ -35,6 +35,12 @@ object Reglages {
     /** Rappeler l'expiration du forfait (7 jours, 3 jours, le jour même). */
     fun rappelExpiration(c: Context) = p(c).getBoolean("rappelExpiration", true)
     fun rappelExpiration(c: Context, v: Boolean) = p(c).edit().putBoolean("rappelExpiration", v).apply()
+    /** Heure du dernier code USSD envoyé à cette carte SIM : un SMS de résultat reçu juste après (3 minutes) est rattaché à cette carte. */
+    fun derniereRequete(c: Context, emplacement: Int) = p(c).getLong("requete_$emplacement", 0L)
+    fun derniereRequete(c: Context, emplacement: Int, v: Long) = p(c).edit().putLong("requete_$emplacement", v).apply()
+    /** Écrit TOUS les réglages sur le stockage du téléphone maintenant (synchrone) ; vrai si l'écriture a réussi. */
+    fun enregistrer(c: Context): Boolean = p(c).edit().putLong("enregistreLe", System.currentTimeMillis()).commit()
+    fun enregistreLe(c: Context) = p(c).getLong("enregistreLe", 0L)
     /** Intervalle de la vérification automatique, en heures (minimum 1, 6 par défaut). */
     fun intervalleHeures(c: Context) = p(c).getInt("intervalleHeures", Solde.INTERVALLE_DEFAUT_HEURES).coerceAtLeast(1)
     fun intervalleHeures(c: Context, v: Int) = p(c).edit().putInt("intervalleHeures", v.coerceAtLeast(1)).apply()

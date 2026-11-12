@@ -135,6 +135,14 @@ object Solde {
         return "Expire le $date " + when (val j = joursRestants(expirationMs, maintenantMs, fuseau)) { 0 -> "(aujourd'hui)"; 1 -> "(demain)"; else -> "(dans $j jours)" }
     }
 
+    /** Vrai si le texte d'un SMS ressemble à un solde Internet (mot « forfait », « internet », « data », « bundle » ou un volume Go / Mo). */
+    fun ressembleAUnSoldeInternet(texte: String): Boolean =
+        Regex("forfait|internet|data|bundle", RegexOption.IGNORE_CASE).containsMatchIn(texte) || VOLUME.containsMatchIn(texte)
+
+    /** Mot qui identifie un opérateur dans un SMS : le premier mot de son nom, en minuscules (« Orange BF » → « orange », « TELECEL » → « telecel »). */
+    fun jetonOperateur(operateur: String): String =
+        operateur.trim().lowercase(Locale.ROOT).split(' ', '-', '_').firstOrNull { it.length >= 3 } ?: operateur.trim().lowercase(Locale.ROOT)
+
     /** Intervalle de la vérification automatique, en heures : saisie libre, jamais moins d'une heure (texte vide ou illisible = 6 h). */
     const val INTERVALLE_DEFAUT_HEURES = 6
     fun intervalleHeures(saisie: String?): Int =

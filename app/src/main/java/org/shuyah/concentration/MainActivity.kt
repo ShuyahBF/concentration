@@ -350,7 +350,32 @@ private fun Ecran(retour: Int) {
                     singleLine = true, label = { Text("Toutes les … heures (minimum 1)") },
                     supportingText = { Text(if ((intervalleTexte.toIntOrNull() ?: 1) < 1) "Au moins 1 heure : 1 h sera retenue." else "Prochaine vérification dans ${Reglages.intervalleHeures(c)} h au plus tard.") },
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
-                Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. Le résultat de chaque carte s'affiche dans l'onglet Général. Sans forfait Internet, l'opérateur répond par une simple phrase : elle est affichée telle quelle.",
+                // Enregistrer (écriture immédiate de tous les réglages) et test du rappel d'expiration
+                Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    Action(Icons.Filled.Save, "Enregistrer") {
+                        val erreurs = mutableListOf<String>()
+                        cartes.forEach { carte ->
+                            val n = carte.emplacement + 1
+                            Reglages.codeUssd(c, carte.emplacement, codes[carte.emplacement] ?: Reglages.codeUssd(c, carte.emplacement))
+                            val depart = departs[carte.emplacement]
+                            if (!depart.isNullOrBlank()) {
+                                val go = depart.replace(',', '.').toDoubleOrNull()
+                                if (go == null) erreurs += "volume de départ de la SIM $n illisible" else Reglages.departMo(c, carte.emplacement, go * 1024.0)
+                            }
+                        }
+                        val seuil = seuilTexte.toIntOrNull()
+                        if (seuil == null) erreurs += "seuil d'alerte illisible" else Reglages.seuilPourcent(c, seuil)
+                        if (verifAuto) Reglages.intervalleHeures(c, Solde.intervalleHeures(intervalleTexte))
+                        val ecrit = Reglages.enregistrer(c)                                  // écriture synchrone : certitude que tout est sur le téléphone
+                        Reseau.programmer(c); Reseau.programmerExpirations(c)
+                        messageReseau = if (!ecrit) "⚠ Écriture impossible sur le téléphone : réessayez." else if (erreurs.isEmpty()) "✓ Réglages enregistrés à ${heureDe(Reglages.enregistreLe(c))}." else "Enregistré, sauf : ${erreurs.joinToString(", ")}."
+                        Toast.makeText(c, if (ecrit) "Réglages enregistrés" else "Écriture impossible", Toast.LENGTH_SHORT).show()
+                    }
+                    Action(Icons.Filled.NotificationsActive, "Test rappel") {
+                        messageReseau = if (Reseau.testerRappelExpiration(c)) "Notification d'essai envoyée : regardez le panneau de notifications." else "Notifications non autorisées : accordez-les avec la ligne d'autorisation ci-dessus."
+                    }
+                }
+                Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. Le résultat de chaque carte s'affiche dans l'onglet Général. Sans forfait Internet, l'opérateur répond par une simple phrase : elle est affichée telle quelle. Si l'opérateur répond par SMS (ex. Telecel sans forfait), la notification du SMS reçue dans les 3 minutes après le code est lue et rattachée à la carte (accès aux notifications requis).",
                     fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
             }
             Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))

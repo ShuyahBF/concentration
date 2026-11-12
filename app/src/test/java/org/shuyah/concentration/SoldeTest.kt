@@ -116,4 +116,13 @@ class SoldeTest {
         val t = "Internet: 2Go (25/11/26) / 500Mo (14/11/26) / 0Mo (13/11/26)"
         assertEquals(ms(2026, 11, 14, 23, 59), Solde.analyserExpiration(t, MAINTENANT, UTC))
     }
+
+    @Test fun smsDeSoldeEtOperateur() {
+        assertTrue(Solde.ressembleAUnSoldeInternet("Le numero n'a pas de forfait internet en cours de validite"))
+        assertTrue(Solde.ressembleAUnSoldeInternet("Solde data: 621Mo"))
+        assertFalse(Solde.ressembleAUnSoldeInternet("Votre code de confirmation est 4821"))
+        assertEquals("orange", Solde.jetonOperateur("Orange BF"))
+        assertEquals("telecel", Solde.jetonOperateur("TELECEL"))
+        assertEquals("sim", Solde.jetonOperateur("SIM 2"))
+    }
 }

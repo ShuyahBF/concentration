@@ -10,7 +10,25 @@ import android.service.notification.StatusBarNotification
  */
 class EcouteurNotifications : NotificationListenerService() {
 
-    override fun onNotificationPosted(sbn: StatusBarNotification) = traiter(sbn, true)
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        rattacherSmsDeSolde(sbn)
+        traiter(sbn, true)
+    }
+
+    /**
+     * Réponse par SMS d'un opérateur (ex. Telecel sans forfait) : si la notification vient de l'application de SMS, elle est proposée à Reseau.traiterSms,
+     * qui ne la retient que si un code vient d'être envoyé à une carte et que le texte ressemble à un solde Internet.
+     */
+    private fun rattacherSmsDeSolde(sbn: StatusBarNotification) {
+        try {
+            val sms = setOf(android.provider.Telephony.Sms.getDefaultSmsPackage(this), "com.google.android.apps.messaging", "com.android.mms", "com.miui.mms", "com.samsung.android.messaging")
+            if (sbn.packageName !in sms) return
+            val x = sbn.notification.extras ?: return
+            val titre = x.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty()
+            val texte = (x.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT) ?: x.getCharSequence(android.app.Notification.EXTRA_TEXT))?.toString().orEmpty()
+            Reseau.traiterSms(this, titre, texte)
+        } catch (e: Exception) { /* jamais bloquant pour la suite du traitement */ }
+    }
 
     /** Au démarrage du service : traite aussi les notifications déjà affichées. */
     override fun onListenerConnected() {

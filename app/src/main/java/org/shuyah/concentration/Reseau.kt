@@ -79,10 +79,39 @@ object Reseau {
      * puis envoie l'alerte (une seule fois) quand le seuil est atteint. `surFin` reçoit la réponse brute.
      */
     fun verifier(c: Context, carte: CarteSim, surFin: (ReponseUssd) -> Unit = {}) {
+        Reglages.derniereRequete(c, carte.emplacement, System.currentTimeMillis())          // un SMS de résultat reçu dans les 3 minutes sera rattaché à cette carte
         lancerUssd(c, carte.idAbonnement, Reglages.codeUssd(c, carte.emplacement)) { r ->
             if (r.texte != null) traiterReponse(c, carte, r.texte)
             surFin(r)
         }
+    }
+
+    /**
+     * Certains opérateurs (ex. Telecel sans forfait) répondent par un SMS dont la notification s'affiche. Appelé par l'écouteur de notifications avec le titre
+     * et le texte d'une notification de l'application de SMS : si un code vient d'être envoyé à une carte (moins de 3 minutes) et que le texte ressemble à un
+     * solde Internet, il est traité comme la réponse de cette carte (préfixe « SMS : »). Carte reconnue par le nom de l'opérateur dans le titre ou le texte ;
+     * à défaut, la seule carte interrogée récemment. Retourne vrai si le SMS a été rattaché.
+     */
+    fun traiterSms(c: Context, titre: String, texte: String): Boolean {
+        if (!lectureAutorisee(c) || texte.isBlank() || !Solde.ressembleAUnSoldeInternet(texte)) return false
+        val maintenant = System.currentTimeMillis()
+        val recentes = cartes(c).filter { maintenant - Reglages.derniereRequete(c, it.emplacement) in 0..180_000L }
+        if (recentes.isEmpty()) return false
+        val tout = "$titre $texte".lowercase()
+        val cible = recentes.firstOrNull { tout.contains(Solde.jetonOperateur(it.operateur)) } ?: recentes.singleOrNull() ?: return false
+        traiterReponse(c, cible, "SMS : $texte")
+        return true
+    }
+
+    /** Notification d'essai du rappel d'expiration (avec la vraie date si une SIM en a une, sinon un exemple) ; faux si les notifications ne sont pas autorisées. */
+    fun testerRappelExpiration(c: Context): Boolean {
+        if (!notificationsAutorisees(c)) return false
+        val slot = (0 until EMPLACEMENTS_MAX).firstOrNull { Reglages.expirationMs(c, it) > System.currentTimeMillis() }
+        val expiration = if (slot != null) Reglages.expirationMs(c, slot) else System.currentTimeMillis() + 3 * 86_400_000L
+        val operateur = if (slot != null) Reglages.lectureOperateur(c, slot).ifBlank { "SIM ${slot + 1}" } else "Exemple"
+        val quand = Solde.libelleExpiration(expiration, 0L).substringAfter("Expire le ").substringBefore(" (")
+        notifier(c, "TEST · Forfait Internet : expiration dans 3 jours", "$operateur : le forfait expire dans 3 jours, le $quand. Les vrais rappels arrivent à 7 jours, 3 jours et le jour même.", 2190)
+        return true
     }
 
     private fun traiterReponse(c: Context, carte: CarteSim, texte: String) {
