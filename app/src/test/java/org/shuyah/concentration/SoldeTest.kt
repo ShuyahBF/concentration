@@ -40,4 +40,10 @@ class SoldeTest {
         assertEquals("2,5 Go", Solde.formater(2560.0))
         assertEquals("450 Mo", Solde.formater(450.0))
     }
+
+    @Test fun sansForfaitLOperateurRepondUnePhraseSansVolume() {
+        // Aucun volume dans la réponse = pas de forfait Internet : analyserVolume rend null (l'application l'affiche « Pas de forfait Internet » avec le texte brut)
+        assertNull(Solde.analyserVolume("Vous n'avez pas de forfait Internet actif. Tapez *123*1# pour souscrire."))
+        assertNull(Solde.analyserVolume("Aucun bundle data actif sur votre compte."))
+    }
 }

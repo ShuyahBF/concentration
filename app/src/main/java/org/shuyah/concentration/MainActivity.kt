@@ -113,7 +113,8 @@ private fun Ecran(retour: Int) {
     var verification by remember { mutableStateOf<Int?>(null) }          // emplacement de la carte en cours de vérification
     var messageReseau by remember { mutableStateOf("") }
     val codes = remember { mutableStateMapOf<Int, String>() }
-    var departGo by remember { mutableStateOf(Reglages.departMo(c).let { if (it > 0) "%.1f".format(java.util.Locale.FRANCE, it / 1024.0) else "" }) }
+    val departs = remember { mutableStateMapOf<Int, String>() }          // volume de départ saisi, par emplacement de carte SIM
+    var onglet by remember { mutableIntStateOf(0) }                      // 0 = Général, 1 = Réseau mobile
     var seuilTexte by remember { mutableStateOf(Reglages.seuilPourcent(c).toString()) }
     var alerteReseau by remember { mutableStateOf(Reglages.alerteReseau(c)) }
     var verifAuto by remember { mutableStateOf(Reglages.verifAuto(c)) }
@@ -121,7 +122,13 @@ private fun Ecran(retour: Int) {
     val okBatterie = remember(retour, batterieConfirmee, maintenant) { batterieLibre(c) || batterieConfirmee }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)).verticalScroll(rememberScrollState()).padding(16.dp).statusBarsPadding().navigationBarsPadding(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)).statusBarsPadding().navigationBarsPadding()) {
+    TabRow(selectedTabIndex = onglet, containerColor = Color.White, contentColor = Bleu) {
+        Tab(selected = onglet == 0, onClick = { onglet = 0 }, text = { Text("Général") })
+        Tab(selected = onglet == 1, onClick = { onglet = 1 }, text = { Text("Réseau mobile") })
+    }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (onglet == 0) {
         // ---- État général et interrupteur ----
         Carte(if (restant != null) Vert else Color(0xFF64748B)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -144,6 +151,29 @@ private fun Ecran(retour: Int) {
             if (cpt.isNotEmpty()) Text("Notifications retardées : " + cpt.entries.joinToString(" · ") { (p, n) ->
                 (try { c.packageManager.getApplicationLabel(c.packageManager.getApplicationInfo(p, 0)).toString() } catch (e: Exception) { p }) + " " + n },
                 color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+        }
+
+        // ---- Résultats du solde Internet de chaque carte SIM (carte bleue, onglet Général) ----
+        val lectures = remember(tickLecture, cartes, maintenant) { cartes.filter { Reglages.lectureHeure(c, it.emplacement) > 0L } }
+        if (lectures.isNotEmpty()) Carte(Bleu) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Pastille(Icons.Filled.SimCard, Color.White.copy(alpha = 0.25f), Color.White, 40)
+                Text("Internet mobile", color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 12.dp))
+            }
+            lectures.forEach { carte ->
+                val restantSim = Reglages.restantMo(c, carte.emplacement); val departSim = Reglages.departMo(c, carte.emplacement)
+                val pc = if (restantSim != null) Solde.pourcentRestant(restantSim, departSim) else null
+                val bas = restantSim != null && departSim > 0 && Solde.seuilAtteint(restantSim, departSim, Reglages.seuilPourcent(c))
+                Column(Modifier.fillMaxWidth().padding(top = 12.dp).clickable {                       // un appui actualise le solde de cette carte
+                    if (verification == null) { verification = carte.emplacement; Reseau.verifier(c, carte) { verification = null; tickLecture++ } }
+                }) {
+                    Text("SIM ${carte.emplacement + 1} · ${carte.operateur}" + (if (carte.donnees) " · Internet actif" else ""), color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
+                    Text(if (verification == carte.emplacement) "Interrogation en cours…" else if (restantSim != null) "Il reste ${Solde.formater(restantSim)}" + (if (pc != null) " (${pc} % du départ)" else "") else "Pas de forfait Internet",
+                        color = if (bas) Orange else Color.White, fontSize = 18.sp)
+                    Text("à ${heureDe(Reglages.lectureHeure(c, carte.emplacement))} · " + Reglages.lectureTexte(c, carte.emplacement).replace('\n', ' ').take(140), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                }
+            }
+            Text("Appuyez sur une carte SIM pour actualiser son solde.", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
         }
 
         // ---- Plages horaires ----
@@ -251,58 +281,6 @@ private fun Ecran(retour: Int) {
                 fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
         }
 
-        // ---- Réseau mobile : carte SIM de données, solde Internet (USSD) et alerte de seuil ----
-        Section("Réseau mobile", Icons.Filled.SimCard) {
-            Autorisation("Téléphone, appels et notifications (lecture des cartes SIM, envoi du code, alerte)", okReseau) {
-                lanceurPerm.launch(arrayOf(android.Manifest.permission.READ_PHONE_STATE, android.Manifest.permission.CALL_PHONE, android.Manifest.permission.POST_NOTIFICATIONS))
-            }
-            if (cartes.isEmpty()) Text(if (okReseau) "Aucune carte SIM active détectée." else "Accordez l'autorisation pour voir vos cartes SIM.", fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 8.dp))
-            cartes.forEach { carte ->
-                val code = codes[carte.emplacement] ?: Reglages.codeUssd(c, carte.emplacement)
-                Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.SimCard, null, tint = if (carte.donnees) Vert else Color(0xFF94A3B8), modifier = Modifier.size(24.dp))
-                        Text("SIM ${carte.emplacement + 1} · ${carte.operateur}", Modifier.weight(1f).padding(start = 8.dp), color = BleuNuit)
-                        Text(if (carte.donnees) "Internet actif" else "", color = Vert, fontSize = 12.sp)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
-                        OutlinedTextField(code, { codes[carte.emplacement] = it; Reglages.codeUssd(c, carte.emplacement, it) }, singleLine = true,
-                            placeholder = { Text("Code du solde Internet (ex. *123#)") }, modifier = Modifier.weight(1f))
-                        Box(Modifier.padding(start = 8.dp)) {
-                            Action(Icons.Filled.Refresh, if (verification == carte.emplacement) "…" else "Solde") {
-                                if (verification == null) {
-                                    verification = carte.emplacement; messageReseau = "Interrogation de ${carte.operateur}…"
-                                    Reseau.verifier(c, carte) { r -> verification = null; tickLecture++; messageReseau = r.erreur ?: "" }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (messageReseau.isNotEmpty()) Text(messageReseau, fontSize = 13.sp, color = if (verification == null) Rouge else Bleu, modifier = Modifier.padding(top = 8.dp))
-            // Dernière lecture : volume restant et part du volume de départ
-            val lecture = remember(tickLecture, maintenant) { Reglages.lectureTexte(c) to Reglages.lectureHeure(c) }
-            if (lecture.second > 0L) {
-                val restant = Reglages.restantMo(c); val depart = Reglages.departMo(c)
-                val pc = if (restant != null) Solde.pourcentRestant(restant, depart) else null
-                Text("Dernière lecture à ${heureDe(lecture.second)} (${Reglages.lectureOperateur(c)}) : " + (if (restant != null) "il reste ${Solde.formater(restant)}" + (if (pc != null) " (${pc} % du départ)" else "") else "volume non reconnu dans la réponse"),
-                    color = if (restant != null && depart > 0 && Solde.seuilAtteint(restant, depart, Reglages.seuilPourcent(c))) Rouge else BleuNuit, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
-                Text(lecture.first, fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 2.dp))
-            }
-            // Volume de départ, seuil d'alerte, vérification automatique
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
-                OutlinedTextField(departGo, { departGo = it; it.replace(',', '.').toDoubleOrNull()?.let { go -> Reglages.departMo(c, go * 1024.0); Reglages.alerteEnvoyee(c, false) } },
-                    singleLine = true, label = { Text("Volume de départ (Go)") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(seuilTexte, { seuilTexte = it; it.toIntOrNull()?.let { p -> Reglages.seuilPourcent(c, p) } },
-                    singleLine = true, label = { Text("Seuil (%)") }, modifier = Modifier.width(100.dp).padding(start = 8.dp))
-            }
-            LigneInterrupteur("M'alerter quand il ne reste que ce pourcentage du volume de départ", alerteReseau) { alerteReseau = it; Reglages.alerteReseau(c, it) }
-            LigneInterrupteur("Remettre le volume de départ à jour quand une recharge est détectée", departAuto) { departAuto = it; Reglages.departAuto(c, it) }
-            LigneInterrupteur("Vérifier le solde automatiquement toutes les 6 h (carte de données active)", verifAuto) { verifAuto = it; Reglages.verifAuto(c, it); Reseau.programmer(c) }
-            Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. La réponse reste sur le téléphone.",
-                fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
-        }
-
         // ---- Xiaomi : rester actif en arrière-plan ----
         Section("Xiaomi : pour que ça reste actif", Icons.Filled.PhoneAndroid) {
             // 1. Batterie : un appui ouvre la fenêtre du système « Autoriser Concentration à toujours fonctionner en arrière-plan ? » → Autoriser
@@ -322,6 +300,52 @@ private fun Ecran(retour: Int) {
             }
         }
         Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+        } else {
+            // ---- Onglet « Réseau mobile » : réglages de l'interrogation des cartes SIM (le résultat s'affiche dans la carte bleue de l'onglet Général) ----
+            Section("Réseau mobile", Icons.Filled.SimCard) {
+                Autorisation("Téléphone, appels et notifications (lecture des cartes SIM, envoi du code, alerte)", okReseau) {
+                    lanceurPerm.launch(arrayOf(android.Manifest.permission.READ_PHONE_STATE, android.Manifest.permission.CALL_PHONE, android.Manifest.permission.POST_NOTIFICATIONS))
+                }
+                if (cartes.isEmpty()) Text(if (okReseau) "Aucune carte SIM active détectée." else "Accordez l'autorisation pour voir vos cartes SIM.", fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 8.dp))
+                cartes.forEach { carte ->
+                    val code = codes[carte.emplacement] ?: Reglages.codeUssd(c, carte.emplacement)
+                    val depart = departs[carte.emplacement] ?: Reglages.departMo(c, carte.emplacement).let { if (it > 0) "%.1f".format(java.util.Locale.FRANCE, it / 1024.0) else "" }
+                    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.SimCard, null, tint = if (carte.donnees) Vert else Color(0xFF94A3B8), modifier = Modifier.size(24.dp))
+                            Text("SIM ${carte.emplacement + 1} · ${carte.operateur}", Modifier.weight(1f).padding(start = 8.dp), color = BleuNuit)
+                            Text(if (carte.donnees) "Internet actif" else "", color = Vert, fontSize = 12.sp)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                            OutlinedTextField(code, { codes[carte.emplacement] = it; Reglages.codeUssd(c, carte.emplacement, it) }, singleLine = true,
+                                placeholder = { Text("Code du solde Internet (ex. *123#)") }, modifier = Modifier.weight(1f))
+                            Box(Modifier.padding(start = 8.dp)) {
+                                Action(Icons.Filled.Refresh, if (verification == carte.emplacement) "…" else "Solde") {
+                                    if (verification == null) {
+                                        verification = carte.emplacement; messageReseau = "Interrogation de ${carte.operateur}…"
+                                        Reseau.verifier(c, carte) { r -> verification = null; tickLecture++; messageReseau = r.erreur ?: "Réponse reçue : voir la carte bleue de l'onglet Général." }
+                                    }
+                                }
+                            }
+                        }
+                        OutlinedTextField(depart, { departs[carte.emplacement] = it; it.replace(',', '.').toDoubleOrNull()?.let { go -> Reglages.departMo(c, carte.emplacement, go * 1024.0); Reglages.alerteEnvoyee(c, carte.emplacement, false) } },
+                            singleLine = true, label = { Text("Volume de départ du forfait (Go)") }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                    }
+                }
+                if (messageReseau.isNotEmpty()) Text(messageReseau, fontSize = 13.sp, color = if (verification == null) Bleu else Bleu, modifier = Modifier.padding(top = 8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
+                    OutlinedTextField(seuilTexte, { seuilTexte = it; it.toIntOrNull()?.let { p -> Reglages.seuilPourcent(c, p) } },
+                        singleLine = true, label = { Text("Seuil d'alerte (% du volume de départ)") }, modifier = Modifier.fillMaxWidth())
+                }
+                LigneInterrupteur("M'alerter quand il ne reste que ce pourcentage du volume de départ", alerteReseau) { alerteReseau = it; Reglages.alerteReseau(c, it) }
+                LigneInterrupteur("Remettre le volume de départ à jour quand une recharge est détectée", departAuto) { departAuto = it; Reglages.departAuto(c, it) }
+                LigneInterrupteur("Vérifier le solde automatiquement toutes les 6 h (carte de données active)", verifAuto) { verifAuto = it; Reglages.verifAuto(c, it); Reseau.programmer(c) }
+                Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. Le résultat de chaque carte s'affiche dans l'onglet Général. Sans forfait Internet, l'opérateur répond par une simple phrase : elle est affichée telle quelle.",
+                    fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
+            }
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+        }
+    }
     }
 
     // Fenêtre d'ajout d'un contact autorisé

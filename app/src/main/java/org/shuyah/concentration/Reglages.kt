@@ -17,9 +17,10 @@ object Reglages {
     /** Code USSD du solde Internet de la carte SIM de cet emplacement (0 = SIM 1) ; vide si non saisi. */
     fun codeUssd(c: Context, emplacement: Int) = p(c).getString("ussd_$emplacement", "") ?: ""
     fun codeUssd(c: Context, emplacement: Int, v: String) = p(c).edit().putString("ussd_$emplacement", v.trim()).apply()
-    /** Volume de départ du forfait, en Mo (0 = inconnu). */
-    fun departMo(c: Context) = p(c).getFloat("departMo", 0f).toDouble()
-    fun departMo(c: Context, v: Double) = p(c).edit().putFloat("departMo", v.toFloat()).apply()
+    /** Volume de départ du forfait de cette carte SIM, en Mo (0 = inconnu). Repli : l'ancien réglage commun de la version 1.8. */
+    fun departMo(c: Context, emplacement: Int): Double =
+        p(c).getFloat("departMo_$emplacement", p(c).getFloat("departMo", 0f)).toDouble()
+    fun departMo(c: Context, emplacement: Int, v: Double) = p(c).edit().putFloat("departMo_$emplacement", v.toFloat()).apply()
     /** Seuil d'alerte en pourcentage du volume de départ (10 par défaut). */
     fun seuilPourcent(c: Context) = p(c).getInt("seuilPourcent", 10)
     fun seuilPourcent(c: Context, v: Int) = p(c).edit().putInt("seuilPourcent", v.coerceIn(1, 90)).apply()
@@ -31,17 +32,18 @@ object Reglages {
     /** Remettre le volume de départ à jour quand une recharge est détectée. */
     fun departAuto(c: Context) = p(c).getBoolean("departAuto", true)
     fun departAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("departAuto", v).apply()
-    /** Alerte déjà envoyée pour ce forfait (une seule notification par passage sous le seuil). */
-    fun alerteEnvoyee(c: Context) = p(c).getBoolean("alerteEnvoyee", false)
-    fun alerteEnvoyee(c: Context, v: Boolean) = p(c).edit().putBoolean("alerteEnvoyee", v).apply()
-    /** Dernière lecture du solde : texte de l'opérateur, heure, volume restant en Mo (négatif = non lu) et opérateur. */
-    fun derniereLecture(c: Context, texte: String, heure: Long, restantMo: Double?, operateur: String) =
-        p(c).edit().putString("lectureTexte", texte).putLong("lectureHeure", heure).putFloat("restantMo", (restantMo ?: -1.0).toFloat()).putString("lectureOperateur", operateur).apply()
-    fun lectureTexte(c: Context) = p(c).getString("lectureTexte", "") ?: ""
-    fun lectureHeure(c: Context) = p(c).getLong("lectureHeure", 0L)
-    fun lectureOperateur(c: Context) = p(c).getString("lectureOperateur", "") ?: ""
-    /** Volume restant lu la dernière fois, en Mo ; null si aucune lecture ou volume non reconnu. */
-    fun restantMo(c: Context): Double? = p(c).getFloat("restantMo", -1f).let { if (it < 0f) null else it.toDouble() }
+    /** Alerte déjà envoyée pour le forfait de cette carte SIM (une seule notification par passage sous le seuil). */
+    fun alerteEnvoyee(c: Context, emplacement: Int) = p(c).getBoolean("alerteEnvoyee_$emplacement", false)
+    fun alerteEnvoyee(c: Context, emplacement: Int, v: Boolean) = p(c).edit().putBoolean("alerteEnvoyee_$emplacement", v).apply()
+    /** Dernière lecture du solde de cette carte SIM : texte de l'opérateur, heure, volume restant en Mo (négatif = aucun volume dans la réponse) et opérateur. */
+    fun derniereLecture(c: Context, emplacement: Int, texte: String, heure: Long, restantMo: Double?, operateur: String) =
+        p(c).edit().putString("lectureTexte_$emplacement", texte).putLong("lectureHeure_$emplacement", heure)
+            .putFloat("restantMo_$emplacement", (restantMo ?: -1.0).toFloat()).putString("lectureOperateur_$emplacement", operateur).apply()
+    fun lectureTexte(c: Context, emplacement: Int) = p(c).getString("lectureTexte_$emplacement", "") ?: ""
+    fun lectureHeure(c: Context, emplacement: Int) = p(c).getLong("lectureHeure_$emplacement", 0L)
+    fun lectureOperateur(c: Context, emplacement: Int) = p(c).getString("lectureOperateur_$emplacement", "") ?: ""
+    /** Volume restant lu la dernière fois sur cette carte, en Mo ; null si aucune lecture ou aucun volume dans la réponse (pas de forfait). */
+    fun restantMo(c: Context, emplacement: Int): Double? = p(c).getFloat("restantMo_$emplacement", -1f).let { if (it < 0f) null else it.toDouble() }
 
     /** Niveau 1 : retarder les notifications des applications bloquées. */
     fun notifications(c: Context) = p(c).getBoolean("notifications", true)

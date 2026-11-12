@@ -86,19 +86,20 @@ object Reseau {
     }
 
     private fun traiterReponse(c: Context, carte: CarteSim, texte: String) {
+        // Sans volume (Go, Mo) dans la réponse, l'opérateur répond par une simple phrase : c'est l'absence de forfait Internet (restant = null)
         val restant = Solde.analyserVolume(texte)
-        val avant = Reglages.restantMo(c)
-        Reglages.derniereLecture(c, texte, System.currentTimeMillis(), restant, carte.operateur)
+        val avant = Reglages.restantMo(c, carte.emplacement)
+        Reglages.derniereLecture(c, carte.emplacement, texte, System.currentTimeMillis(), restant, carte.operateur)
         if (restant == null) return
-        if (Reglages.departAuto(c) && Solde.rechargeDetectee(avant, restant)) { Reglages.departMo(c, restant); Reglages.alerteEnvoyee(c, false) }
-        val depart = Reglages.departMo(c)
+        if (Reglages.departAuto(c) && Solde.rechargeDetectee(avant, restant)) { Reglages.departMo(c, carte.emplacement, restant); Reglages.alerteEnvoyee(c, carte.emplacement, false) }
+        val depart = Reglages.departMo(c, carte.emplacement)
         if (depart > 0 && Solde.seuilAtteint(restant, depart, Reglages.seuilPourcent(c))) {
-            if (Reglages.alerteReseau(c) && !Reglages.alerteEnvoyee(c)) {
-                Reglages.alerteEnvoyee(c, true)
+            if (Reglages.alerteReseau(c) && !Reglages.alerteEnvoyee(c, carte.emplacement)) {
+                Reglages.alerteEnvoyee(c, carte.emplacement, true)
                 val pc = Solde.pourcentRestant(restant, depart)
                 notifier(c, "Internet mobile : presque épuisé", "${carte.operateur} : il reste ${Solde.formater(restant)} (${pc} % du volume de départ).")
             }
-        } else Reglages.alerteEnvoyee(c, false)            // volume remonté (recharge) : la prochaine baisse sous le seuil alertera de nouveau
+        } else Reglages.alerteEnvoyee(c, carte.emplacement, false)            // volume remonté (recharge) : la prochaine baisse sous le seuil alertera de nouveau
     }
 
     /** Notification d'alerte (canal « Réseau mobile »). Sans l'autorisation d'afficher des notifications, rien ne s'affiche. */
