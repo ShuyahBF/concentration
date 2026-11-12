@@ -8,6 +8,11 @@
     <!-- Demande « toujours actif en arrière-plan » (économie de batterie) : fenêtre système, un seul appui -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Réseau mobile : carte SIM de données active, solde Internet par code USSD (envoyé en arrière-plan) et alerte de seuil -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Niveau 3 : reprise du planning au redémarrage du téléphone et réveils exacts au début / à la fin des plages -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -32,6 +37,7 @@
         <service android:name=".ServiceVpn" android:exported="false" android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter><action android:name="android.net.VpnService" /></intent-filter>
         </service>
+        <receiver android:name=".RecepteurReseau" android:exported="false" />
         <receiver android:name=".RecepteurPlanning" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

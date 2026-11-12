@@ -13,6 +13,36 @@ object Reglages {
     fun actif(c: Context) = p(c).getBoolean("actif", true)
     fun actif(c: Context, v: Boolean) = p(c).edit().putBoolean("actif", v).apply()
 
+    // ---- Réseau mobile (v1.8) : solde Internet par code USSD et alerte de seuil ----
+    /** Code USSD du solde Internet de la carte SIM de cet emplacement (0 = SIM 1) ; vide si non saisi. */
+    fun codeUssd(c: Context, emplacement: Int) = p(c).getString("ussd_$emplacement", "") ?: ""
+    fun codeUssd(c: Context, emplacement: Int, v: String) = p(c).edit().putString("ussd_$emplacement", v.trim()).apply()
+    /** Volume de départ du forfait, en Mo (0 = inconnu). */
+    fun departMo(c: Context) = p(c).getFloat("departMo", 0f).toDouble()
+    fun departMo(c: Context, v: Double) = p(c).edit().putFloat("departMo", v.toFloat()).apply()
+    /** Seuil d'alerte en pourcentage du volume de départ (10 par défaut). */
+    fun seuilPourcent(c: Context) = p(c).getInt("seuilPourcent", 10)
+    fun seuilPourcent(c: Context, v: Int) = p(c).edit().putInt("seuilPourcent", v.coerceIn(1, 90)).apply()
+    fun alerteReseau(c: Context) = p(c).getBoolean("alerteReseau", true)
+    fun alerteReseau(c: Context, v: Boolean) = p(c).edit().putBoolean("alerteReseau", v).apply()
+    /** Vérifier le solde automatiquement toutes les 6 heures. */
+    fun verifAuto(c: Context) = p(c).getBoolean("verifAuto", false)
+    fun verifAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("verifAuto", v).apply()
+    /** Remettre le volume de départ à jour quand une recharge est détectée. */
+    fun departAuto(c: Context) = p(c).getBoolean("departAuto", true)
+    fun departAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("departAuto", v).apply()
+    /** Alerte déjà envoyée pour ce forfait (une seule notification par passage sous le seuil). */
+    fun alerteEnvoyee(c: Context) = p(c).getBoolean("alerteEnvoyee", false)
+    fun alerteEnvoyee(c: Context, v: Boolean) = p(c).edit().putBoolean("alerteEnvoyee", v).apply()
+    /** Dernière lecture du solde : texte de l'opérateur, heure, volume restant en Mo (négatif = non lu) et opérateur. */
+    fun derniereLecture(c: Context, texte: String, heure: Long, restantMo: Double?, operateur: String) =
+        p(c).edit().putString("lectureTexte", texte).putLong("lectureHeure", heure).putFloat("restantMo", (restantMo ?: -1.0).toFloat()).putString("lectureOperateur", operateur).apply()
+    fun lectureTexte(c: Context) = p(c).getString("lectureTexte", "") ?: ""
+    fun lectureHeure(c: Context) = p(c).getLong("lectureHeure", 0L)
+    fun lectureOperateur(c: Context) = p(c).getString("lectureOperateur", "") ?: ""
+    /** Volume restant lu la dernière fois, en Mo ; null si aucune lecture ou volume non reconnu. */
+    fun restantMo(c: Context): Double? = p(c).getFloat("restantMo", -1f).let { if (it < 0f) null else it.toDouble() }
+
     /** Niveau 1 : retarder les notifications des applications bloquées. */
     fun notifications(c: Context) = p(c).getBoolean("notifications", true)
     fun notifications(c: Context, v: Boolean) = p(c).edit().putBoolean("notifications", v).apply()

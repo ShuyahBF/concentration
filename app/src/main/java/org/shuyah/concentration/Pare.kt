@@ -45,7 +45,7 @@ object Pare {
     }
 
     /** À appeler après tout changement de réglage. */
-    fun appliquer(c: Context, forcer: Boolean = false) { synchroniser(c, forcer); programmer(c) }
+    fun appliquer(c: Context, forcer: Boolean = false) { synchroniser(c, forcer); programmer(c); Reseau.programmer(c) }
 }
 
 /** Reçoit le réveil programmé, le redémarrage du téléphone et la mise à jour de l'application : remet le pare-feu dans le bon état. */

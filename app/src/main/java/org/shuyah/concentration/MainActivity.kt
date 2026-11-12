@@ -104,6 +104,20 @@ private fun Ecran(retour: Int) {
     val contacts = remember { mutableStateListOf(*Reglages.contacts(c).toTypedArray()) }
     var ajoutContact by remember { mutableStateOf(false) }
     var son by remember { mutableStateOf(Reglages.son(c)) }
+    // ---- Réseau mobile (v1.8) ----
+    var tickPerm by remember { mutableIntStateOf(0) }                    // relu après la fenêtre d'autorisations du système
+    val lanceurPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { tickPerm++ }
+    val cartes = remember(retour, tickPerm, maintenant) { Reseau.cartes(c) }
+    val okReseau = remember(retour, tickPerm, maintenant) { Reseau.lectureAutorisee(c) && Reseau.ussdAutorise(c) && Reseau.notificationsAutorisees(c) }
+    var tickLecture by remember { mutableIntStateOf(0) }                 // relu après chaque vérification du solde
+    var verification by remember { mutableStateOf<Int?>(null) }          // emplacement de la carte en cours de vérification
+    var messageReseau by remember { mutableStateOf("") }
+    val codes = remember { mutableStateMapOf<Int, String>() }
+    var departGo by remember { mutableStateOf(Reglages.departMo(c).let { if (it > 0) "%.1f".format(java.util.Locale.FRANCE, it / 1024.0) else "" }) }
+    var seuilTexte by remember { mutableStateOf(Reglages.seuilPourcent(c).toString()) }
+    var alerteReseau by remember { mutableStateOf(Reglages.alerteReseau(c)) }
+    var verifAuto by remember { mutableStateOf(Reglages.verifAuto(c)) }
+    var departAuto by remember { mutableStateOf(Reglages.departAuto(c)) }
     val okBatterie = remember(retour, batterieConfirmee, maintenant) { batterieLibre(c) || batterieConfirmee }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
@@ -234,6 +248,58 @@ private fun Ecran(retour: Int) {
             }
             Autorisation("Autorisation VPN (pare-feu local)", okVpn) { VpnService.prepare(c)?.let { i -> lanceurVpn.launch(i) } }
             Text(if (ServiceVpn.actif) "Pare-feu en cours : les applications bloquées n'ont plus Internet." else "Aucun message ne sort ni n'entre : tout ce qui attend arrive à la fin de la plage. Ce n'est pas un vrai VPN : rien ne quitte le téléphone. Il remplace un autre VPN s'il y en a un.",
+                fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
+        }
+
+        // ---- Réseau mobile : carte SIM de données, solde Internet (USSD) et alerte de seuil ----
+        Section("Réseau mobile", Icons.Filled.SimCard) {
+            Autorisation("Téléphone, appels et notifications (lecture des cartes SIM, envoi du code, alerte)", okReseau) {
+                lanceurPerm.launch(arrayOf(android.Manifest.permission.READ_PHONE_STATE, android.Manifest.permission.CALL_PHONE, android.Manifest.permission.POST_NOTIFICATIONS))
+            }
+            if (cartes.isEmpty()) Text(if (okReseau) "Aucune carte SIM active détectée." else "Accordez l'autorisation pour voir vos cartes SIM.", fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 8.dp))
+            cartes.forEach { carte ->
+                val code = codes[carte.emplacement] ?: Reglages.codeUssd(c, carte.emplacement)
+                Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.SimCard, null, tint = if (carte.donnees) Vert else Color(0xFF94A3B8), modifier = Modifier.size(24.dp))
+                        Text("SIM ${carte.emplacement + 1} · ${carte.operateur}", Modifier.weight(1f).padding(start = 8.dp), color = BleuNuit)
+                        Text(if (carte.donnees) "Internet actif" else "", color = Vert, fontSize = 12.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                        OutlinedTextField(code, { codes[carte.emplacement] = it; Reglages.codeUssd(c, carte.emplacement, it) }, singleLine = true,
+                            placeholder = { Text("Code du solde Internet (ex. *123#)") }, modifier = Modifier.weight(1f))
+                        Box(Modifier.padding(start = 8.dp)) {
+                            Action(Icons.Filled.Refresh, if (verification == carte.emplacement) "…" else "Solde") {
+                                if (verification == null) {
+                                    verification = carte.emplacement; messageReseau = "Interrogation de ${carte.operateur}…"
+                                    Reseau.verifier(c, carte) { r -> verification = null; tickLecture++; messageReseau = r.erreur ?: "" }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (messageReseau.isNotEmpty()) Text(messageReseau, fontSize = 13.sp, color = if (verification == null) Rouge else Bleu, modifier = Modifier.padding(top = 8.dp))
+            // Dernière lecture : volume restant et part du volume de départ
+            val lecture = remember(tickLecture, maintenant) { Reglages.lectureTexte(c) to Reglages.lectureHeure(c) }
+            if (lecture.second > 0L) {
+                val restant = Reglages.restantMo(c); val depart = Reglages.departMo(c)
+                val pc = if (restant != null) Solde.pourcentRestant(restant, depart) else null
+                Text("Dernière lecture à ${heureDe(lecture.second)} (${Reglages.lectureOperateur(c)}) : " + (if (restant != null) "il reste ${Solde.formater(restant)}" + (if (pc != null) " (${pc} % du départ)" else "") else "volume non reconnu dans la réponse"),
+                    color = if (restant != null && depart > 0 && Solde.seuilAtteint(restant, depart, Reglages.seuilPourcent(c))) Rouge else BleuNuit, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
+                Text(lecture.first, fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 2.dp))
+            }
+            // Volume de départ, seuil d'alerte, vérification automatique
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 12.dp)) {
+                OutlinedTextField(departGo, { departGo = it; it.replace(',', '.').toDoubleOrNull()?.let { go -> Reglages.departMo(c, go * 1024.0); Reglages.alerteEnvoyee(c, false) } },
+                    singleLine = true, label = { Text("Volume de départ (Go)") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(seuilTexte, { seuilTexte = it; it.toIntOrNull()?.let { p -> Reglages.seuilPourcent(c, p) } },
+                    singleLine = true, label = { Text("Seuil (%)") }, modifier = Modifier.width(100.dp).padding(start = 8.dp))
+            }
+            LigneInterrupteur("M'alerter quand il ne reste que ce pourcentage du volume de départ", alerteReseau) { alerteReseau = it; Reglages.alerteReseau(c, it) }
+            LigneInterrupteur("Remettre le volume de départ à jour quand une recharge est détectée", departAuto) { departAuto = it; Reglages.departAuto(c, it) }
+            LigneInterrupteur("Vérifier le solde automatiquement toutes les 6 h (carte de données active)", verifAuto) { verifAuto = it; Reglages.verifAuto(c, it); Reseau.programmer(c) }
+            Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. La réponse reste sur le téléphone.",
                 fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
         }
 
