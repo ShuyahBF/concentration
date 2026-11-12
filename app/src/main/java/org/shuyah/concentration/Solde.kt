@@ -45,6 +45,11 @@ object Solde {
     fun rechargeDetectee(avantMo: Double?, apresMo: Double): Boolean =
         avantMo != null && apresMo > avantMo * 1.2 && apresMo - avantMo >= 50.0
 
+    /** Intervalle de la vérification automatique, en heures : saisie libre, jamais moins d'une heure (texte vide ou illisible = 6 h). */
+    const val INTERVALLE_DEFAUT_HEURES = 6
+    fun intervalleHeures(saisie: String?): Int =
+        (saisie?.trim()?.toIntOrNull() ?: INTERVALLE_DEFAUT_HEURES).coerceIn(1, 8760)
+
     /** « 2,3 Go » ou « 450 Mo » (virgule française). */
     fun formater(mo: Double): String =
         if (mo >= 1024.0) String.format(Locale.FRANCE, "%.1f Go", mo / 1024.0) else String.format(Locale.FRANCE, "%.0f Mo", mo)

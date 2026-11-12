@@ -118,6 +118,7 @@ private fun Ecran(retour: Int) {
     var seuilTexte by remember { mutableStateOf(Reglages.seuilPourcent(c).toString()) }
     var alerteReseau by remember { mutableStateOf(Reglages.alerteReseau(c)) }
     var verifAuto by remember { mutableStateOf(Reglages.verifAuto(c)) }
+    var intervalleTexte by remember { mutableStateOf(Reglages.intervalleHeures(c).toString()) }
     var departAuto by remember { mutableStateOf(Reglages.departAuto(c)) }
     val okBatterie = remember(retour, batterieConfirmee, maintenant) { batterieLibre(c) || batterieConfirmee }
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
@@ -339,7 +340,11 @@ private fun Ecran(retour: Int) {
                 }
                 LigneInterrupteur("M'alerter quand il ne reste que ce pourcentage du volume de départ", alerteReseau) { alerteReseau = it; Reglages.alerteReseau(c, it) }
                 LigneInterrupteur("Remettre le volume de départ à jour quand une recharge est détectée", departAuto) { departAuto = it; Reglages.departAuto(c, it) }
-                LigneInterrupteur("Vérifier le solde automatiquement toutes les 6 h (carte de données active)", verifAuto) { verifAuto = it; Reglages.verifAuto(c, it); Reseau.programmer(c) }
+                LigneInterrupteur("Vérifier le solde automatiquement (carte de données active)", verifAuto) { verifAuto = it; Reglages.verifAuto(c, it); Reseau.programmer(c) }
+                if (verifAuto) OutlinedTextField(intervalleTexte, { intervalleTexte = it; it.toIntOrNull()?.let { h -> Reglages.intervalleHeures(c, Solde.intervalleHeures(it)); Reseau.programmer(c) } },
+                    singleLine = true, label = { Text("Toutes les … heures (minimum 1)") },
+                    supportingText = { Text(if ((intervalleTexte.toIntOrNull() ?: 1) < 1) "Au moins 1 heure : 1 h sera retenue." else "Prochaine vérification dans ${Reglages.intervalleHeures(c)} h au plus tard.") },
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                 Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. Le résultat de chaque carte s'affiche dans l'onglet Général. Sans forfait Internet, l'opérateur répond par une simple phrase : elle est affichée telle quelle.",
                     fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
             }

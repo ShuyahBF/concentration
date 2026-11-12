@@ -46,4 +46,14 @@ class SoldeTest {
         assertNull(Solde.analyserVolume("Vous n'avez pas de forfait Internet actif. Tapez *123*1# pour souscrire."))
         assertNull(Solde.analyserVolume("Aucun bundle data actif sur votre compte."))
     }
+
+    @Test fun intervalleDeVerificationLibreAvecUnMinimumDUneHeure() {
+        assertEquals(6, Solde.intervalleHeures(null))            // non renseigné : 6 h par défaut
+        assertEquals(6, Solde.intervalleHeures("abc"))
+        assertEquals(1, Solde.intervalleHeures("1"))
+        assertEquals(1, Solde.intervalleHeures("0"))             // jamais moins d'une heure
+        assertEquals(1, Solde.intervalleHeures("-4"))
+        assertEquals(12, Solde.intervalleHeures(" 12 "))
+        assertEquals(48, Solde.intervalleHeures("48"))
+    }
 }

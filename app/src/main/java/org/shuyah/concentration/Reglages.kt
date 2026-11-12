@@ -29,6 +29,9 @@ object Reglages {
     /** Vérifier le solde automatiquement toutes les 6 heures. */
     fun verifAuto(c: Context) = p(c).getBoolean("verifAuto", false)
     fun verifAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("verifAuto", v).apply()
+    /** Intervalle de la vérification automatique, en heures (minimum 1, 6 par défaut). */
+    fun intervalleHeures(c: Context) = p(c).getInt("intervalleHeures", Solde.INTERVALLE_DEFAUT_HEURES).coerceAtLeast(1)
+    fun intervalleHeures(c: Context, v: Int) = p(c).edit().putInt("intervalleHeures", v.coerceAtLeast(1)).apply()
     /** Remettre le volume de départ à jour quand une recharge est détectée. */
     fun departAuto(c: Context) = p(c).getBoolean("departAuto", true)
     fun departAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("departAuto", v).apply()

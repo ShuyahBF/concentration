@@ -112,13 +112,13 @@ object Reseau {
             .setStyle(Notification.BigTextStyle().bigText(texte)).setContentIntent(ouvrir).setAutoCancel(true).build())
     }
 
-    /** Vérification automatique : programme (ou annule) un réveil toutes les 6 heures. À rappeler après tout changement de réglage. */
+    /** Vérification automatique : programme (ou annule) un réveil à l'intervalle choisi (en heures, minimum 1). À rappeler après tout changement de réglage. */
     fun programmer(c: Context) {
         val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = PendingIntent.getBroadcast(c, 3, Intent(c, RecepteurReseau::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         am.cancel(pi)
         if (!Reglages.verifAuto(c)) return
-        val intervalle = 6 * AlarmManager.INTERVAL_HOUR
+        val intervalle = Reglages.intervalleHeures(c) * AlarmManager.INTERVAL_HOUR
         am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + intervalle, intervalle, pi)
     }
 }
