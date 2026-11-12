@@ -54,32 +54,59 @@ object Solde {
     private val HEURE_APRES = Regex("^\\s*(?:,|à|a|at|-)?\\s*(\\d{1,2})\\s*[:hH]\\s*(\\d{2})")
     private val MOTS_EXPIRATION = listOf("exp", "valab", "valid", "jusqu", "until", "fin ", "echeance", "échéance")
 
-    /**
-     * Date d'expiration du forfait lue dans la réponse de l'opérateur, en millisecondes ; null si le texte n'en donne pas.
-     * Formats lus : JJ/MM/AAAA, JJ-MM-AA, JJ.MM.AAAA, AAAA-MM-JJ, suivis éventuellement d'une heure (14:30, 14h30) ; sans heure : 23:59.
-     * Seules comptent les dates ENTRE PARENTHÈSES ou précédées d'un mot comme « exp », « valable », « jusqu'au » : une date de recharge n'est pas confondue
-     * avec l'expiration. Plusieurs dates : la plus proche à venir (sinon la plus récente, déjà passée).
-     */
-    fun analyserExpiration(texte: String, maintenantMs: Long, fuseau: TimeZone = TimeZone.getDefault()): Long? {
-        data class Candidat(val debut: Int, val fin: Int, val an: Int, val mois: Int, val jour: Int)
-        val trouves = mutableListOf<Candidat>()
+    /** Première date (JJ/MM/AAAA, JJ-MM-AA, AAAA-MM-JJ…) d'un texte, avec son heure si elle suit (14:30, 14h30 ; sinon 23:59), en millisecondes ; null si aucune. */
+    private fun premiereDate(texte: String, fuseau: TimeZone): Long? = datesDe(texte, fuseau).firstOrNull()?.ms
+
+    private data class DateLue(val debut: Int, val fin: Int, val ms: Long)
+
+    /** Toutes les dates valides d'un texte, dans l'ordre de leur position (une date impossible comme 31/02 est ignorée). */
+    private fun datesDe(texte: String, fuseau: TimeZone): List<DateLue> {
+        data class Brut(val debut: Int, val fin: Int, val an: Int, val mois: Int, val jour: Int)
+        val trouves = mutableListOf<Brut>()
         DATE_JMA.findAll(texte).forEach { m ->
             val an = m.groupValues[3].toInt().let { if (it < 100) 2000 + it else it }
-            trouves += Candidat(m.range.first, m.range.last + 1, an, m.groupValues[2].toInt(), m.groupValues[1].toInt())
+            trouves += Brut(m.range.first, m.range.last + 1, an, m.groupValues[2].toInt(), m.groupValues[1].toInt())
         }
-        DATE_AMJ.findAll(texte).forEach { m -> trouves += Candidat(m.range.first, m.range.last + 1, m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt()) }
-        val dates = trouves.mapNotNull { c ->
-            val avant = texte.substring(maxOf(0, c.debut - 45), c.debut).lowercase(Locale.ROOT)
-            val ouvrante = texte.lastIndexOf('(', c.debut); val fermante = texte.lastIndexOf(')', c.debut)
-            val entreParentheses = ouvrante > fermante && c.debut - ouvrante < 60
-            if (!entreParentheses && MOTS_EXPIRATION.none { avant.contains(it) }) return@mapNotNull null
+        DATE_AMJ.findAll(texte).forEach { m -> trouves += Brut(m.range.first, m.range.last + 1, m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt()) }
+        return trouves.sortedBy { it.debut }.mapNotNull { c ->
             val h = HEURE_APRES.find(texte.substring(c.fin, minOf(texte.length, c.fin + 14)))
             val heure = h?.groupValues?.get(1)?.toInt()?.takeIf { it in 0..23 }; val minute = h?.groupValues?.get(2)?.toInt()?.takeIf { it in 0..59 }
             val cal = Calendar.getInstance(fuseau).apply { isLenient = false; clear() }
             try {
                 cal.set(c.an, c.mois - 1, c.jour, if (heure != null && minute != null) heure else 23, if (heure != null && minute != null) minute else 59, 0)
-                cal.timeInMillis
-            } catch (e: IllegalArgumentException) { null }                // 31/02 ou mois 13 : ignoré
+                DateLue(c.debut, c.fin, cal.timeInMillis)
+            } catch (e: IllegalArgumentException) { null }
+        }
+    }
+
+    private val PARENTHESE_APRES = Regex("^\\s*\\(([^)]*)\\)")
+
+    /**
+     * Date d'expiration du forfait Internet lue dans la réponse de l'opérateur, en millisecondes ; null si le texte n'en donne pas (ou s'il n'y a plus de volume).
+     *
+     * Format des opérateurs : chaque volume est suivi, entre parenthèses, de SA date d'expiration, ou de « - » quand il n'en a pas, par exemple
+     * « 621Mo (18/11/26) / 0Mo (-) / 0Mo (15/11/26) ». Seuls les volumes ENCORE POSITIFS comptent (un volume à 0 n'a plus rien à perdre) : c'est la date
+     * la plus proche à venir parmi eux. Tout à 0 : pas d'expiration à rappeler.
+     * Sans ce format, repli : une date ENTRE PARENTHÈSES ou précédée d'un mot comme « exp », « valable », « jusqu'au » (une date de recharge n'est pas
+     * confondue avec l'expiration) ; plusieurs dates : la plus proche à venir (sinon la plus récente, déjà passée).
+     */
+    fun analyserExpiration(texte: String, maintenantMs: Long, fuseau: TimeZone = TimeZone.getDefault()): Long? {
+        // 1) volumes suivis de leur date entre parenthèses
+        val paires = VOLUME.findAll(texte).mapNotNull { m ->
+            val parenthese = PARENTHESE_APRES.find(texte.substring(m.range.last + 1)) ?: return@mapNotNull null
+            enMo(m.groupValues[1].replace(',', '.').toDouble(), m.groupValues[2]) to premiereDate(parenthese.groupValues[1], fuseau)
+        }.toList()
+        if (paires.isNotEmpty()) {
+            val dates = paires.filter { it.first > 0.0 && it.second != null }.map { it.second!! }
+            if (dates.isEmpty()) return null
+            return dates.filter { it >= maintenantMs }.minOrNull() ?: dates.maxOrNull()
+        }
+        // 2) repli : date entre parenthèses ou après un mot d'expiration
+        val dates = datesDe(texte, fuseau).mapNotNull { c ->
+            val avant = texte.substring(maxOf(0, c.debut - 45), c.debut).lowercase(Locale.ROOT)
+            val ouvrante = texte.lastIndexOf('(', c.debut); val fermante = texte.lastIndexOf(')', c.debut)
+            val entreParentheses = ouvrante > fermante && c.debut - ouvrante < 60
+            if (entreParentheses || MOTS_EXPIRATION.any { avant.contains(it) }) c.ms else null
         }
         if (dates.isEmpty()) return null
         return dates.filter { it >= maintenantMs }.minOrNull() ?: dates.maxOrNull()

@@ -98,4 +98,22 @@ class SoldeTest {
         assertEquals("Expire le 13/11/2026 à 23:59 (demain)", Solde.libelleExpiration(ms(2026, 11, 13, 23, 59), MAINTENANT, UTC))
         assertTrue(Solde.libelleExpiration(ms(2026, 11, 1, 23, 59), MAINTENANT, UTC).startsWith("Expiré le 01/11/2026"))
     }
+
+    private val REPONSE_ORANGE = "Solde: 0F. Internet: 621Mo (18/11/26)/ 0Mo (-) / 0Mo (15/11/26) / 0.00Mo (-) / Alloc: 0.00 Mo"
+
+    @Test fun reponseReelleOrangeLExpirationEstCelleDuVolumeEncorePositif() {
+        // La date « 15/11/26 » est celle d'un volume à 0 Mo : sans importance. L'expiration à rappeler est celle des 621 Mo : 18/11/26.
+        assertEquals(ms(2026, 11, 18, 23, 59), Solde.analyserExpiration(REPONSE_ORANGE, MAINTENANT, UTC))
+        assertEquals(621.0, Solde.analyserVolume(REPONSE_ORANGE)!!, 0.01)
+    }
+
+    @Test fun toutAZeroPasDExpirationARappeler() {
+        assertNull(Solde.analyserExpiration("Solde: 0F. Internet: 0Mo (-) / 0Mo (15/11/26) / 0.00Mo (-) / Alloc: 0.00 Mo", MAINTENANT, UTC))
+        assertEquals(0.0, Solde.analyserVolume("Solde: 0F. Internet: 0Mo (-) / 0Mo (15/11/26)")!!, 0.001)       // le volume vaut 0, pas « aucun forfait »
+    }
+
+    @Test fun plusieursVolumesPositifsLaDatePlusProcheEstRetenue() {
+        val t = "Internet: 2Go (25/11/26) / 500Mo (14/11/26) / 0Mo (13/11/26)"
+        assertEquals(ms(2026, 11, 14, 23, 59), Solde.analyserExpiration(t, MAINTENANT, UTC))
+    }
 }
