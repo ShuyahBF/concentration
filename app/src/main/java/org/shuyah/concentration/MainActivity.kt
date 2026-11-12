@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.net.VpnService
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -118,6 +119,7 @@ private fun Ecran(retour: Int) {
                         Reglages.enPause(c) -> "En pause (reprise à ${heureDe(Reglages.pauseJusqua(c))})"
                         restant != null -> "En cours : encore ${restant / 60} h ${"%02d".format(restant % 60)} (jusqu'à ${heureFin(restant)})"
                         plages.isEmpty() -> "Aucune plage horaire"
+                        plages.none { it.actif } -> "Toutes les plages sont inactives"
                         else -> "En attente de la prochaine plage"
                     }, color = Color.White.copy(alpha = 0.9f), fontSize = 13.sp)
                 }
@@ -133,21 +135,39 @@ private fun Ecran(retour: Int) {
         // ---- Plages horaires ----
         Section("Plages horaires", Icons.Filled.Schedule) {
             plages.forEachIndexed { i, p ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text(p.libelle(), fontSize = 17.sp, color = BleuNuit)
-                        // Jours : un appui sur une lettre l'ajoute ou l'enlève (jour où la plage commence)
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
-                            Plage.JOURS.forEachIndexed { j, l ->
-                                val on = p.jours and (1 shl j) != 0
-                                Box(Modifier.size(30.dp).clip(CircleShape).background(if (on) Bleu else Color(0xFFE2E8F0))
-                                    .clickable { plages[i] = p.copy(jours = p.jours xor (1 shl j)); sauverPlages() }, contentAlignment = Alignment.Center) {
-                                    Text(l, color = if (on) Color.White else Color(0xFF475569), fontSize = 13.sp)
-                                }
+                // Une plage EN COURS est verrouillée (horaires et jours) ; une plage future ou inactive reste modifiable
+                val (jourNow, minNow) = remember(maintenant) { Plage.jourEtMinutes() }
+                val verrouillee = p.enCours(jourNow, minNow)
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    // Ligne du haut : horaires, état (actif / inactif), modifier, supprimer
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(p.libelle(), fontSize = 17.sp, color = if (p.actif) BleuNuit else Color(0xFF94A3B8))
+                            Text(if (!p.actif) "Inactive (conservée, ne bloque rien)" else if (verrouillee) "En cours : non modifiable" else "Active",
+                                fontSize = 12.sp, color = if (!p.actif) Color(0xFF94A3B8) else if (verrouillee) Orange else Vert)
+                        }
+                        Switch(p.actif, { plages[i] = p.copy(actif = it); sauverPlages() })
+                        // Modifier : heure de début puis heure de fin, préremplies avec les valeurs actuelles (impossible pendant la plage)
+                        Icon(Icons.Filled.Edit, "Modifier la plage", tint = if (verrouillee) Color(0xFFCBD5E1) else Bleu,
+                            modifier = Modifier.padding(start = 8.dp).size(28.dp).clickable {
+                                if (verrouillee) { Toast.makeText(c, "Plage en cours : modification impossible avant sa fin.", Toast.LENGTH_SHORT).show(); return@clickable }
+                                TimePickerDialog(c, { _, h1, m1 ->
+                                    TimePickerDialog(c, { _, h2, m2 -> plages[i] = p.copy(debut = h1 * 60 + m1, fin = h2 * 60 + m2); sauverPlages() }, p.fin / 60, p.fin % 60, true)
+                                        .apply { setTitle("Heure de FIN") }.show()
+                                }, p.debut / 60, p.debut % 60, true).apply { setTitle("Heure de DÉBUT") }.show()
+                            })
+                        Icon(Icons.Filled.Delete, "Supprimer la plage", tint = Rouge, modifier = Modifier.padding(start = 8.dp).size(28.dp).clickable { plages.removeAt(i); sauverPlages() })
+                    }
+                    // Jours : un appui sur une lettre l'ajoute ou l'enlève (jour où la plage commence) — verrouillé pendant la plage
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 6.dp)) {
+                        Plage.JOURS.forEachIndexed { j, l ->
+                            val on = p.jours and (1 shl j) != 0
+                            Box(Modifier.size(30.dp).clip(CircleShape).background(if (on) (if (p.actif) Bleu else Color(0xFF94A3B8)) else Color(0xFFE2E8F0))
+                                .clickable(enabled = !verrouillee) { plages[i] = p.copy(jours = p.jours xor (1 shl j)); sauverPlages() }, contentAlignment = Alignment.Center) {
+                                Text(l, color = if (on) Color.White else Color(0xFF475569), fontSize = 13.sp)
                             }
                         }
                     }
-                    Icon(Icons.Filled.Delete, "Supprimer la plage", tint = Rouge, modifier = Modifier.size(28.dp).clickable { plages.removeAt(i); sauverPlages() })
                 }
                 HorizontalDivider()
             }

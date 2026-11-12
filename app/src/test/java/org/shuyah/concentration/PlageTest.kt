@@ -61,4 +61,20 @@ class PlageTest {
         assertFalse(Contacts.correspond(listOf("Liluvine"), emptyList()))
         assertFalse(Contacts.correspond(listOf("a b c"), listOf("a")))                                          // nom trop court ignoré
     }
+
+    @Test fun plageInactiveNeBloqueJamaisEtSeRelitAvecSonStatut() {
+        val inactive = nuit.copy(actif = false)
+        assertNull(inactive.minutesRestantes(2, 22 * 60))
+        assertFalse(inactive.contient(2, 22 * 60))
+        assertEquals(inactive, Plage.depuisTexte(inactive.versTexte()))
+        assertEquals("1200,420,127,0", inactive.versTexte())
+        assertEquals(nuit, Plage.depuisTexte("1200,420,127"))          // ancien format (3 nombres) : plage active
+        assertNull(Plage.minutesAvantChangement(listOf(inactive), 2, 19 * 60))      // une plage inactive ne change jamais l'état
+    }
+
+    @Test fun plageEnCoursEstVerrouilleeMaisPasUnePlageFuture() {
+        assertTrue(nuit.enCours(2, 22 * 60))                            // 22:00 : en cours → verrouillée
+        assertFalse(nuit.enCours(2, 12 * 60))                           // midi : pas commencée → modifiable
+        assertFalse(nuit.copy(actif = false).enCours(2, 22 * 60))       // inactive : modifiable
+    }
 }
