@@ -2,6 +2,8 @@ package org.shuyah.concentration
 
 import org.junit.Assert.*
 import org.junit.Test
+import java.util.Calendar
+import java.util.TimeZone
 
 /** Tests de la lecture du solde Internet (réponse USSD) et de l'alerte de seuil (sans Android). */
 class SoldeTest {
@@ -55,5 +57,45 @@ class SoldeTest {
         assertEquals(1, Solde.intervalleHeures("-4"))
         assertEquals(12, Solde.intervalleHeures(" 12 "))
         assertEquals(48, Solde.intervalleHeures("48"))
+    }
+
+    private val UTC = TimeZone.getTimeZone("UTC")
+    private fun ms(an: Int, mois: Int, jour: Int, h: Int = 0, m: Int = 0): Long =
+        Calendar.getInstance(UTC).apply { clear(); set(an, mois - 1, jour, h, m, 0) }.timeInMillis
+    private val MAINTENANT = ms(2026, 11, 12, 10, 0)
+
+    @Test fun dateDExpirationEntreParenthesesOuApresUnMotCle() {
+        assertEquals(ms(2026, 11, 20, 23, 59), Solde.analyserExpiration("Internet: 2.5 Go (exp. 20/11/2026)", MAINTENANT, UTC))
+        assertEquals(ms(2026, 11, 20, 14, 30), Solde.analyserExpiration("Il vous reste 1,2 Go (valable jusqu'au 20/11/26 à 14:30)", MAINTENANT, UTC))
+        assertEquals(ms(2026, 11, 20, 8, 15), Solde.analyserExpiration("Solde 500 Mo (20-11-2026 08h15)", MAINTENANT, UTC))
+        assertEquals(ms(2026, 12, 3, 23, 59), Solde.analyserExpiration("Data 3 Go expire le 2026-12-03", MAINTENANT, UTC))
+    }
+
+    @Test fun uneDateDeRechargeNEstPasUneExpiration() {
+        assertNull(Solde.analyserExpiration("Derniere recharge le 01/11/2026. Solde 500 Mo", MAINTENANT, UTC))
+        assertNull(Solde.analyserExpiration("Vous n'avez pas de forfait Internet actif.", MAINTENANT, UTC))
+        assertNull(Solde.analyserExpiration("Forfait (31/02/2026)", MAINTENANT, UTC))              // date impossible : ignorée
+    }
+
+    @Test fun plusieursForfaitsLaPlusProcheAVenirEstRetenue() {
+        val t = "5 Go (exp 15/12/2026) ; 1 Go (exp 18/11/2026) ; 2 Go (exp 01/11/2026)"
+        assertEquals(ms(2026, 11, 18, 23, 59), Solde.analyserExpiration(t, MAINTENANT, UTC))
+        assertEquals(ms(2026, 11, 1, 23, 59), Solde.analyserExpiration("Forfait (exp 01/11/2026)", MAINTENANT, UTC))      // seulement du passé : la plus récente
+    }
+
+    @Test fun rappelsASeptJoursTroisJoursEtLeJourMemeAvantLHeure() {
+        val exp = ms(2026, 11, 20, 23, 59)
+        assertEquals(listOf(7 to ms(2026, 11, 13, 9, 0), 3 to ms(2026, 11, 17, 9, 0), 0 to ms(2026, 11, 20, 8, 0)), Solde.momentsRappel(exp, UTC))
+        // expiration tôt le matin : le dernier rappel part 2 h avant l'heure
+        assertEquals(ms(2026, 11, 20, 6, 15), Solde.momentsRappel(ms(2026, 11, 20, 8, 15), UTC).last().second)
+    }
+
+    @Test fun joursRestantsEtLibelle() {
+        assertEquals(8, Solde.joursRestants(ms(2026, 11, 20, 23, 59), MAINTENANT, UTC))
+        assertEquals(0, Solde.joursRestants(ms(2026, 11, 12, 23, 59), MAINTENANT, UTC))
+        assertEquals("Expire le 20/11/2026 à 23:59 (dans 8 jours)", Solde.libelleExpiration(ms(2026, 11, 20, 23, 59), MAINTENANT, UTC))
+        assertEquals("Expire le 12/11/2026 à 23:59 (aujourd'hui)", Solde.libelleExpiration(ms(2026, 11, 12, 23, 59), MAINTENANT, UTC))
+        assertEquals("Expire le 13/11/2026 à 23:59 (demain)", Solde.libelleExpiration(ms(2026, 11, 13, 23, 59), MAINTENANT, UTC))
+        assertTrue(Solde.libelleExpiration(ms(2026, 11, 1, 23, 59), MAINTENANT, UTC).startsWith("Expiré le 01/11/2026"))
     }
 }

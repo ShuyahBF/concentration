@@ -38,6 +38,7 @@
             <intent-filter><action android:name="android.net.VpnService" /></intent-filter>
         </service>
         <receiver android:name=".RecepteurReseau" android:exported="false" />
+        <receiver android:name=".RecepteurExpiration" android:exported="false" />
         <receiver android:name=".RecepteurPlanning" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

@@ -87,6 +87,9 @@ object Reseau {
 
     private fun traiterReponse(c: Context, carte: CarteSim, texte: String) {
         // Sans volume (Go, Mo) dans la réponse, l'opérateur répond par une simple phrase : c'est l'absence de forfait Internet (restant = null)
+        // Date d'expiration du forfait (souvent entre parenthèses) : mémorisée par carte, et les rappels J-7, J-3 et du jour sont reprogrammés
+        Reglages.expirationMs(c, carte.emplacement, Solde.analyserExpiration(texte, System.currentTimeMillis()) ?: 0L)
+        programmerExpirations(c)
         val restant = Solde.analyserVolume(texte)
         val avant = Reglages.restantMo(c, carte.emplacement)
         Reglages.derniereLecture(c, carte.emplacement, texte, System.currentTimeMillis(), restant, carte.operateur)
@@ -103,13 +106,36 @@ object Reseau {
     }
 
     /** Notification d'alerte (canal « Réseau mobile »). Sans l'autorisation d'afficher des notifications, rien ne s'affiche. */
-    private fun notifier(c: Context, titre: String, texte: String) {
+    internal fun notifier(c: Context, titre: String, texte: String, id: Int = 2001) {
         if (!notificationsAutorisees(c)) return
         val nm = c.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CANAL, "Réseau mobile", NotificationManager.IMPORTANCE_HIGH))
         val ouvrir = PendingIntent.getActivity(c, 2, Intent(c, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        nm.notify(2001, Notification.Builder(c, CANAL).setSmallIcon(android.R.drawable.stat_sys_warning).setContentTitle(titre).setContentText(texte)
+        nm.notify(id, Notification.Builder(c, CANAL).setSmallIcon(android.R.drawable.stat_sys_warning).setContentTitle(titre).setContentText(texte)
             .setStyle(Notification.BigTextStyle().bigText(texte)).setContentIntent(ouvrir).setAutoCancel(true).build())
+    }
+
+    private const val EMPLACEMENTS_MAX = 4
+
+    /** Programme (ou annule) les trois rappels d'expiration du forfait de chaque carte SIM : 7 jours avant, 3 jours avant, le jour même avant l'heure. */
+    fun programmerExpirations(c: Context) {
+        val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val maintenant = System.currentTimeMillis()
+        for (slot in 0 until EMPLACEMENTS_MAX) {
+            val expiration = Reglages.expirationMs(c, slot)
+            val voulus = if (Reglages.rappelExpiration(c) && expiration > maintenant) Solde.momentsRappel(expiration) else emptyList()
+            listOf(7, 3, 0).forEachIndexed { idx, type ->
+                val intent = Intent(c, RecepteurExpiration::class.java).putExtra("slot", slot).putExtra("type", type).putExtra("expiration", expiration)
+                val pi = PendingIntent.getBroadcast(c, 100 + slot * 10 + idx, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                am.cancel(pi)
+                val quand = voulus.firstOrNull { it.first == type }?.second ?: return@forEachIndexed
+                if (quand <= maintenant) return@forEachIndexed          // moment déjà passé : plus de rappel pour ce palier
+                try {
+                    if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi)
+                    else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi)
+                } catch (e: SecurityException) { am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, quand, pi) }
+            }
+        }
     }
 
     /** Vérification automatique : programme (ou annule) un réveil à l'intervalle choisi (en heures, minimum 1). À rappeler après tout changement de réglage. */
@@ -132,5 +158,18 @@ class RecepteurReseau : BroadcastReceiver() {
         // Le système limite la durée d'un récepteur : on rend la main après 9 s au plus (la réponse est traitée si elle arrive avant)
         Handler(Looper.getMainLooper()).postDelayed({ try { attente.finish() } catch (e: Exception) { } }, 9_000)
         Reseau.verifier(c, carte) { try { attente.finish() } catch (e: Exception) { } }
+    }
+}
+
+/** Rappel d'expiration du forfait Internet : notification 7 jours avant, 3 jours avant et le jour même avant l'heure. */
+class RecepteurExpiration : BroadcastReceiver() {
+    override fun onReceive(c: Context, i: Intent) {
+        val slot = i.getIntExtra("slot", -1); val type = i.getIntExtra("type", -1); val expiration = i.getLongExtra("expiration", 0L)
+        // Rappel périmé (forfait rechargé : la date a changé depuis la programmation) : ignoré
+        if (slot < 0 || expiration == 0L || Reglages.expirationMs(c, slot) != expiration || !Reglages.rappelExpiration(c)) return
+        val operateur = Reglages.lectureOperateur(c, slot).ifBlank { "SIM ${slot + 1}" }
+        val quand = Solde.libelleExpiration(expiration, 0L).substringAfter("Expire le ").substringBefore(" (")
+        val delai = when (type) { 7 -> "dans 7 jours"; 3 -> "dans 3 jours"; else -> "AUJOURD'HUI" }
+        Reseau.notifier(c, "Forfait Internet : expiration $delai", "$operateur (SIM ${slot + 1}) : le forfait expire $delai, le $quand. Pensez à le renouveler.", 2100 + slot * 10 + (if (type == 7) 0 else if (type == 3) 1 else 2))
     }
 }

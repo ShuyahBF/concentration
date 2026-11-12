@@ -118,6 +118,7 @@ private fun Ecran(retour: Int) {
     var seuilTexte by remember { mutableStateOf(Reglages.seuilPourcent(c).toString()) }
     var alerteReseau by remember { mutableStateOf(Reglages.alerteReseau(c)) }
     var verifAuto by remember { mutableStateOf(Reglages.verifAuto(c)) }
+    var rappelExpiration by remember { mutableStateOf(Reglages.rappelExpiration(c)) }
     var intervalleTexte by remember { mutableStateOf(Reglages.intervalleHeures(c).toString()) }
     var departAuto by remember { mutableStateOf(Reglages.departAuto(c)) }
     val okBatterie = remember(retour, batterieConfirmee, maintenant) { batterieLibre(c) || batterieConfirmee }
@@ -171,6 +172,9 @@ private fun Ecran(retour: Int) {
                     Text("SIM ${carte.emplacement + 1} · ${carte.operateur}" + (if (carte.donnees) " · Internet actif" else ""), color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
                     Text(if (verification == carte.emplacement) "Interrogation en cours…" else if (restantSim != null) "Il reste ${Solde.formater(restantSim)}" + (if (pc != null) " (${pc} % du départ)" else "") else "Pas de forfait Internet",
                         color = if (bas) Orange else Color.White, fontSize = 18.sp)
+                    val expiration = Reglages.expirationMs(c, carte.emplacement)
+                    if (expiration > 0L) Text(Solde.libelleExpiration(expiration, System.currentTimeMillis()),
+                        color = if (expiration < System.currentTimeMillis() || Solde.joursRestants(expiration, System.currentTimeMillis()) <= 7) Orange else Color.White, fontSize = 15.sp)
                     Text("à ${heureDe(Reglages.lectureHeure(c, carte.emplacement))} · " + Reglages.lectureTexte(c, carte.emplacement).replace('\n', ' ').take(140), color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
                 }
             }
@@ -339,6 +343,7 @@ private fun Ecran(retour: Int) {
                         singleLine = true, label = { Text("Seuil d'alerte (% du volume de départ)") }, modifier = Modifier.fillMaxWidth())
                 }
                 LigneInterrupteur("M'alerter quand il ne reste que ce pourcentage du volume de départ", alerteReseau) { alerteReseau = it; Reglages.alerteReseau(c, it) }
+                LigneInterrupteur("Me rappeler l'expiration du forfait (7 jours, 3 jours, le jour même avant l'heure)", rappelExpiration) { rappelExpiration = it; Reglages.rappelExpiration(c, it); Reseau.programmerExpirations(c) }
                 LigneInterrupteur("Remettre le volume de départ à jour quand une recharge est détectée", departAuto) { departAuto = it; Reglages.departAuto(c, it) }
                 LigneInterrupteur("Vérifier le solde automatiquement (carte de données active)", verifAuto) { verifAuto = it; Reglages.verifAuto(c, it); Reseau.programmer(c) }
                 if (verifAuto) OutlinedTextField(intervalleTexte, { intervalleTexte = it; it.toIntOrNull()?.let { h -> Reglages.intervalleHeures(c, Solde.intervalleHeures(it)); Reseau.programmer(c) } },

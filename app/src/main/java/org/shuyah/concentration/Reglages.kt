@@ -29,6 +29,12 @@ object Reglages {
     /** Vérifier le solde automatiquement toutes les 6 heures. */
     fun verifAuto(c: Context) = p(c).getBoolean("verifAuto", false)
     fun verifAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("verifAuto", v).apply()
+    /** Date d'expiration du forfait de cette carte SIM (millisecondes, 0 = inconnue), lue dans la réponse de l'opérateur. */
+    fun expirationMs(c: Context, emplacement: Int) = p(c).getLong("expiration_$emplacement", 0L)
+    fun expirationMs(c: Context, emplacement: Int, v: Long) = p(c).edit().putLong("expiration_$emplacement", v).apply()
+    /** Rappeler l'expiration du forfait (7 jours, 3 jours, le jour même). */
+    fun rappelExpiration(c: Context) = p(c).getBoolean("rappelExpiration", true)
+    fun rappelExpiration(c: Context, v: Boolean) = p(c).edit().putBoolean("rappelExpiration", v).apply()
     /** Intervalle de la vérification automatique, en heures (minimum 1, 6 par défaut). */
     fun intervalleHeures(c: Context) = p(c).getInt("intervalleHeures", Solde.INTERVALLE_DEFAUT_HEURES).coerceAtLeast(1)
     fun intervalleHeures(c: Context, v: Int) = p(c).edit().putInt("intervalleHeures", v.coerceAtLeast(1)).apply()
