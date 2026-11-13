@@ -2,6 +2,10 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
+## Version 1.16 — lecture corrigée des SMS Orange Money
+- Montant : « 2,150.00 FCFA » est lu **2 150** (et non 150) : la virgule peut séparer les milliers, le point les décimales (« 6403.0202 » = 6 403). Les paiements déjà enregistrés sont relus à la mise à jour.
+- **Bénéficiaire** (le nom répété deux fois par Orange Money n'est gardé qu'une fois) et **numéro de transaction** (ex. MP261113.1339.95787510 = date AAMMJJ . heure HHMM . numéro chronologique) ; la date et l'heure du paiement sont celles du numéro de transaction.
+
 ## Version 1.14 — Consommation Internet et base des paiements (SMS)
 - **3e onglet « Consommation »** : à chaque vérification du solde (bouton « Solde » ou vérification automatique), le volume restant est mémorisé par carte SIM. La consommation entre deux vérifications est estimée (volume précédent − volume actuel) et tracée : **courbe du volume restant** et **barres de la consommation par jour** (périodes 7 / 30 / 90 jours), moyenne par jour, durée estimée du volume restant. Une recharge (volume qui remonte) est signalée et ne compte pas comme consommation.
 - **4e onglet « Paiements »** : les SMS de paiement (Orange Money, Moov, Telecel, banques) sont reconnus (dépense ou recette, montant, tiers, solde) et rangés dans une **base locale** SQLite. Totaux dépenses / recettes et liste. **Version 1.15** : la lecture se fait dans la **notification** du SMS à son arrivée (accès aux notifications déjà utilisé), sans autorisation « SMS » que Google Play Protect bloque sur une application installée à la main ; seuls les SMS reçus après l'activation sont capturés. Seuls les paiements sont conservés, uniquement sur le téléphone.

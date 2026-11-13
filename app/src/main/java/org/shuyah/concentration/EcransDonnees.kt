@@ -175,6 +175,7 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
                 Column(Modifier.weight(1f)) {
                     Text(p.tiers.ifBlank { p.adresse }, fontSize = 14.sp, color = BleuNuit)
                     Text(dateHeure(p.recuLeMs) + " · " + p.adresse + (p.soldeApres?.let { " · solde " + francs(it) } ?: ""), fontSize = 11.sp, color = Color(0xFF64748B))
+                    p.reference?.let { Text("Transaction " + it, fontSize = 11.sp, color = Color(0xFF64748B)) }
                 }
                 Text((if (p.genre == "RECETTE") "+ " else "− ") + francs(p.montant), fontSize = 14.sp, color = if (p.genre == "RECETTE") Vert else Rouge, textAlign = TextAlign.End)
             }
