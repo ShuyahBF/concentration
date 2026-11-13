@@ -13,11 +13,11 @@ import android.database.sqlite.SQLiteOpenHelper
  * Pour un développeur WinDev : c'est l'équivalent d'un fichier HFSQL local à deux tables, sans serveur. `UNIQUE(adresse, recuLe, corps)` empêche d'enregistrer
  * deux fois le même SMS quand la boîte est relue.
  */
-class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicationContext, "concentration.db", null, 2) {
+class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicationContext, "concentration.db", null, 3) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE mesures (id INTEGER PRIMARY KEY AUTOINCREMENT, emplacement INTEGER NOT NULL, operateur TEXT NOT NULL, ms INTEGER NOT NULL, restantMo REAL NOT NULL)")
         db.execSQL("CREATE INDEX idx_mesures ON mesures(emplacement, ms)")
-        db.execSQL("CREATE TABLE paiements (id INTEGER PRIMARY KEY AUTOINCREMENT, adresse TEXT NOT NULL, recuLe INTEGER NOT NULL, genre TEXT NOT NULL, montant INTEGER NOT NULL, tiers TEXT NOT NULL, solde INTEGER, corps TEXT NOT NULL, reference TEXT, UNIQUE(adresse, recuLe, corps))")
+        db.execSQL("CREATE TABLE paiements (id INTEGER PRIMARY KEY AUTOINCREMENT, adresse TEXT NOT NULL, recuLe INTEGER NOT NULL, genre TEXT NOT NULL, montant INTEGER NOT NULL, tiers TEXT NOT NULL, solde INTEGER, corps TEXT NOT NULL, reference TEXT, envoye INTEGER NOT NULL DEFAULT 0, UNIQUE(adresse, recuLe, corps))")
         db.execSQL("CREATE INDEX idx_paiements ON paiements(recuLe)")
         db.execSQL("CREATE UNIQUE INDEX idx_paiements_ref ON paiements(reference) WHERE reference IS NOT NULL")
     }
@@ -38,7 +38,13 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
             } }
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_paiements_ref ON paiements(reference) WHERE reference IS NOT NULL")
         }
+        if (ancienne < 3) versTrois(db)
     }
+
+    /**
+     * Version 2 → 3 : colonne `envoye` (0 = pas encore envoyé à SAWALI, 1 = envoyé). Les paiements déjà enregistrés sont à envoyer.
+     */
+    private fun versTrois(db: SQLiteDatabase) { db.execSQL("ALTER TABLE paiements ADD COLUMN envoye INTEGER NOT NULL DEFAULT 0") }
 
     companion object {
         @Volatile private var instance: Historique? = null
@@ -98,8 +104,21 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
             buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8))) }
         }
 
-    /** Supprime un paiement de la base (par son identifiant). */
-    @Synchronized fun supprimerPaiement(id: Long) { writableDatabase.delete("paiements", "id = ?", arrayOf(id.toString())) }
+    /** Paiements pas encore envoyés à SAWALI (les plus anciens d'abord), `max` au plus. */
+    @Synchronized fun nonEnvoyes(max: Int): List<Paiements.Paiement> =
+        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, id FROM paiements WHERE envoye = 0 ORDER BY recuLe LIMIT ?", arrayOf(max.toString())).use { q ->
+            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8))) }
+        }
+
+    /** Marque ces paiements comme envoyés à SAWALI. */
+    @Synchronized fun marquerEnvoyes(ids: List<Long>) {
+        val bd = writableDatabase
+        bd.beginTransaction()
+        try { ids.forEach { bd.execSQL("UPDATE paiements SET envoye = 1 WHERE id = ?", arrayOf<Any>(it)) }; bd.setTransactionSuccessful() } finally { bd.endTransaction() }
+    }
+
+    /** Nombre de paiements en attente d'envoi à SAWALI. */
+    @Synchronized fun nombreNonEnvoyes(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM paiements WHERE envoye = 0", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
     /** Nombre de paiements enregistrés (tous). */
     @Synchronized fun nombrePaiements(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM paiements", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
