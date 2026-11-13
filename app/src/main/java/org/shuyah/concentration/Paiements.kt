@@ -11,8 +11,8 @@ import java.util.Locale
  * volontairement prudente : en cas de doute le SMS est ignoré plutôt que mal classé.
  */
 object Paiements {
-    /** Un paiement lu : sens (DEPENSE ou RECETTE), montant en FCFA, tiers, solde après opération, numéro de transaction (ex. MP261113.1339.95787510). */
-    data class Paiement(val adresse: String, val recuLeMs: Long, val genre: String, val montant: Long, val tiers: String, val soldeApres: Long?, val corps: String, val reference: String? = null)
+    /** Un paiement lu : sens (DEPENSE ou RECETTE), montant en FCFA, tiers, solde après opération, numéro de transaction (ex. MP261113.1339.95787510), identifiant en base (0 tant que non enregistré). */
+    data class Paiement(val adresse: String, val recuLeMs: Long, val genre: String, val montant: Long, val tiers: String, val soldeApres: Long?, val corps: String, val reference: String? = null, val id: Long = 0)
 
     // Nombre : « 2,150.00 », « 15 000 », « 15.000 », « 6403.0202 », « 2500 » (voir `lireNombre` pour le sens des virgules et des points)
     private const val NOMBRE = "(?:\\d{1,3}(?:[ \\u00a0\\u202f]\\d{3})+|\\d+)(?:[.,]\\d+)*"

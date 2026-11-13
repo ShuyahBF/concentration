@@ -77,6 +77,30 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
             buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7))) }
         }
 
+    /** Ajoute plusieurs paiements d'un coup (une seule transaction : rapide même pour des milliers de SMS) ; rend le nombre de NOUVEAUX paiements (les doublons sont ignorés). */
+    @Synchronized fun ajouterPaiements(liste: List<Paiements.Paiement>): Int {
+        val bd = writableDatabase
+        var ajoutes = 0
+        bd.beginTransaction()
+        try {
+            for (p in liste) {
+                val v = ContentValues().apply { put("adresse", p.adresse); put("recuLe", p.recuLeMs); put("genre", p.genre); put("montant", p.montant); put("tiers", p.tiers); put("solde", p.soldeApres); put("corps", p.corps); put("reference", p.reference) }
+                if (bd.insertWithOnConflict("paiements", null, v, SQLiteDatabase.CONFLICT_IGNORE) != -1L) ajoutes++
+            }
+            bd.setTransactionSuccessful()
+        } finally { bd.endTransaction() }
+        return ajoutes
+    }
+
+    /** TOUS les paiements enregistrés (avec leur identifiant), du plus récent au plus ancien : les statistiques et les filtres sont calculés en mémoire sur cette liste. */
+    @Synchronized fun tousPaiements(): List<Paiements.Paiement> =
+        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, id FROM paiements ORDER BY recuLe DESC", null).use { q ->
+            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8))) }
+        }
+
+    /** Supprime un paiement de la base (par son identifiant). */
+    @Synchronized fun supprimerPaiement(id: Long) { writableDatabase.delete("paiements", "id = ?", arrayOf(id.toString())) }
+
     /** Nombre de paiements enregistrés (tous). */
     @Synchronized fun nombrePaiements(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM paiements", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
 }
