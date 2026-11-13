@@ -9,10 +9,6 @@ import android.content.Context
 object Reglages {
     private fun p(c: Context) = c.getSharedPreferences("concentration", Context.MODE_PRIVATE)
 
-    /** Date (ms) du dernier SMS déjà lu pour la base des paiements : la synchronisation ne relit que les SMS plus récents. */
-    fun dernierSmsLu(c: Context) = p(c).getLong("dernierSmsLu", 0L)
-    fun dernierSmsLu(c: Context, v: Long) = p(c).edit().putLong("dernierSmsLu", v).apply()
-
     /** Interrupteur général. */
     fun actif(c: Context) = p(c).getBoolean("actif", true)
     fun actif(c: Context, v: Boolean) = p(c).edit().putBoolean("actif", v).apply()

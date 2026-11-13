@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Vrai si l'accès aux notifications est accordé à Concentration. */
-private fun accesNotifications(c: Context) = Settings.Secure.getString(c.contentResolver, "enabled_notification_listeners")?.contains(c.packageName + "/") == true
+internal fun accesNotifications(c: Context) = Settings.Secure.getString(c.contentResolver, "enabled_notification_listeners")?.contains(c.packageName + "/") == true
 
 /** Vrai si le service d'accessibilité (verrou) est activé. */
 private fun accessibiliteActive(c: Context) = Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(c.packageName + "/") == true
@@ -71,7 +71,7 @@ private fun accessibiliteActive(c: Context) = Settings.Secure.getString(c.conten
 private fun batterieLibre(c: Context) = (c.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(c.packageName)
 
 /** Ouvre un écran de réglages ; si l'appareil ne l'a pas, ouvre la fiche de l'application. */
-private fun ouvrir(c: Context, i: Intent) {
+internal fun ouvrir(c: Context, i: Intent) {
     try { c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {
         try { c.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + c.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e2: Exception) {}
     }

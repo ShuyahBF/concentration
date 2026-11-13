@@ -27,8 +27,8 @@ class EcouteurNotifications : NotificationListenerService() {
             val titre = x.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty()
             val texte = (x.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT) ?: x.getCharSequence(android.app.Notification.EXTRA_TEXT))?.toString().orEmpty()
             Reseau.traiterSms(this, titre, texte)
-            // Un SMS vient d'arriver : les paiements qu'il contient (le cas échéant) rejoignent la base locale
-            Thread { Sms.synchroniser(applicationContext) }.start()
+            // Un SMS vient d'arriver : s'il contient un paiement, il rejoint la base locale (lu dans la notification : aucune autorisation « SMS » requise)
+            Paiements.analyser(titre, texte, sbn.notification.`when`.takeIf { it > 0 } ?: sbn.postTime)?.let { Historique.de(this).ajouterPaiement(it) }
         } catch (e: Exception) { /* jamais bloquant pour la suite du traitement */ }
     }
 

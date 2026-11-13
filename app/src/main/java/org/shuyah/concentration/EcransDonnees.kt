@@ -1,7 +1,5 @@
 package org.shuyah.concentration
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,9 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -149,46 +144,31 @@ private fun BarresParJour(parJour: List<Pair<String, Double>>) {
 // =====================================================================================================================
 
 /**
- * Base des paiements : lit les SMS de la boîte de réception (autorisation « SMS »), reconnaît les paiements (Orange Money, Moov, Telecel, banques) et les
- * range dans la base locale. Affiche les totaux dépenses / recettes de la période et la liste des paiements. Tout reste sur le téléphone.
+ * Base des paiements : les SMS de paiement (Orange Money, Moov, Telecel, banques) sont reconnus à leur ARRIVÉE, dans la notification de l'application de SMS
+ * (même « Accès aux notifications » que le reste de Concentration : aucune autorisation « SMS », que Google Play Protect bloque sur une application installée
+ * à la main), et rangés dans la base locale. Affiche les totaux dépenses / recettes de la période et la liste. Tout reste sur le téléphone.
+ * Limite : seuls les SMS reçus APRÈS l'activation de l'accès aux notifications sont capturés (pas l'historique de la boîte de réception).
  */
 @Composable
 internal fun OngletPaiements(retour: Int, maintenant: Long) {
     val c = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var tick by remember { mutableIntStateOf(0) }
-    var message by remember { mutableStateOf("") }
-    var enCours by remember { mutableStateOf(false) }
     var jours by remember { mutableIntStateOf(30) }                              // 30, 90 ou 365 jours
-    val autorise = remember(retour, tick, maintenant) { Sms.autorise(c) }
-    val liste = remember(tick, jours, retour) { Historique.de(c).paiements(System.currentTimeMillis() - jours * 86_400_000L) }
+    val acces = remember(retour, maintenant) { accesNotifications(c) }
+    val liste = remember(retour, maintenant, jours) { Historique.de(c).paiements(System.currentTimeMillis() - jours * 86_400_000L) }
     val depenses = liste.filter { it.genre == "DEPENSE" }.sumOf { it.montant }
     val recettes = liste.filter { it.genre == "RECETTE" }.sumOf { it.montant }
 
-    // Lecture des SMS dans un fil d'arrière-plan (la première lecture porte sur 90 jours)
-    val lire = {
-        if (!enCours) { enCours = true; message = "Lecture des SMS…"
-            scope.launch {
-                val n = withContext(Dispatchers.IO) { Sms.synchroniser(c) }
-                enCours = false; tick++; message = if (n > 0) "$n nouveau${if (n > 1) "x" else ""} paiement${if (n > 1) "s" else ""} enregistré${if (n > 1) "s" else ""}." else "Aucun nouveau paiement."
-            }
-        }
-    }
-    val demande = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok -> tick++; if (ok) lire() }
-
     Section("Paiements (SMS)", Icons.Filled.Info) {
-        Autorisation("Lecture des SMS (paiements)", autorise) { demande.launch(android.Manifest.permission.READ_SMS) }
-        if (autorise) Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            Action(Icons.Filled.Refresh, if (enCours) "…" else "Lire les SMS") { lire() }
+        Autorisation("Accès aux notifications (lecture des SMS de paiement à leur arrivée)", acces) {
+            ouvrir(c, android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
-        if (message.isNotBlank()) Text(message, fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(30, 90, 365).forEach { j -> FilterChip(selected = jours == j, onClick = { jours = j }, label = { Text(if (j == 365) "1 an" else "$j jours") }) }
         }
         LigneChiffre("Dépenses", francs(depenses))
         LigneChiffre("Recettes", francs(recettes))
         LigneChiffre("Paiements enregistrés", "${liste.size} (base : ${Historique.de(c).nombrePaiements()})")
-        if (liste.isEmpty()) Text(if (autorise) "Aucun paiement sur la période. Appuyez sur « Lire les SMS »." else "Accordez l'autorisation pour constituer la base des paiements.",
+        if (liste.isEmpty()) Text(if (acces) "Aucun paiement pour le moment : chaque nouveau SMS de paiement reçu sera ajouté ici." else "Activez l'accès aux notifications pour constituer la base des paiements.",
             fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 8.dp))
         liste.take(60).forEach { p ->
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.Top) {
@@ -200,6 +180,6 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
             }
         }
         if (liste.size > 60) Text("Les 60 paiements les plus récents sont affichés.", fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 8.dp))
-        Text("Seuls les SMS reconnus comme paiements sont conservés, uniquement sur ce téléphone.", fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 8.dp))
+        Text("Seuls les SMS reconnus comme paiements sont conservés, uniquement sur ce téléphone. Seuls les SMS reçus depuis l'activation de l'accès aux notifications sont lus.", fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 8.dp))
     }
 }
