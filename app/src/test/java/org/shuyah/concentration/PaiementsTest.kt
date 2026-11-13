@@ -53,6 +53,9 @@ class PaiementsTest {
     @Test fun nomRepeteEtReferenceAbsente() {
         assertEquals("PHARMACIE DU PROGRES", Paiements.sansRepetition("PHARMACIE DU PROGRES PHARMACIE DU PROGRES"))
         assertEquals("AWA OUEDRAOGO", Paiements.sansRepetition("AWA OUEDRAOGO"))
+        assertEquals("ALIMENTATION LA MENAGERE", Paiements.sansRepetition("ALIMENTATION LA MENAGERE ALIMENTATION LA MENAGERE SARL"))   // répétition suivie d'autres mots : première occurrence
+        assertEquals("BOUTIQUE", Paiements.sansRepetition("BOUTIQUE boutique"))
+        assertEquals("AWA BADINI", Paiements.sansRepetition("AWA BADINI"))
         assertNull(Paiements.analyser("OM", "Retrait de 10000 FCFA effectué.", 5L)!!.reference)
         assertEquals(5L, Paiements.analyser("OM", "Retrait de 10000 FCFA effectué.", 5L)!!.recuLeMs)       // sans numéro de transaction : heure de réception
     }

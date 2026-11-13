@@ -73,10 +73,15 @@ object Paiements {
         } catch (e: IllegalArgumentException) { null }
     }
 
-    /** Un nom écrit deux fois de suite (« ALIMENTATION LA MENAGERE ALIMENTATION LA MENAGERE ») est ramené à une seule fois. */
+    /**
+     * Le nom est pris la PREMIÈRE fois qu'il apparaît : si ses premiers mots sont répétés juste après (« ALIMENTATION LA MENAGERE ALIMENTATION LA MENAGERE »,
+     * même suivi d'autres mots), on ne garde que la première occurrence. Sans répétition, le nom est laissé tel quel.
+     */
     fun sansRepetition(nom: String): String {
         val mots = nom.trim().split(Regex("\\s+"))
-        if (mots.size >= 2 && mots.size % 2 == 0 && mots.take(mots.size / 2).map { it.lowercase() } == mots.drop(mots.size / 2).map { it.lowercase() }) return mots.take(mots.size / 2).joinToString(" ")
+        for (n in 1..mots.size / 2) {
+            if (mots.take(n).map { it.lowercase() } == mots.subList(n, 2 * n).map { it.lowercase() }) return mots.take(n).joinToString(" ")
+        }
         return nom.trim()
     }
 
