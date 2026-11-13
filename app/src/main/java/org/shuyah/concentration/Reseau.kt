@@ -123,6 +123,8 @@ object Reseau {
         val avant = Reglages.restantMo(c, carte.emplacement)
         Reglages.derniereLecture(c, carte.emplacement, texte, System.currentTimeMillis(), restant, carte.operateur)
         if (restant == null) return
+        // Historique des mesures : sert au graphique de consommation entre deux vérifications (3e onglet)
+        try { Historique.de(c).ajouterMesure(carte.emplacement, carte.operateur, System.currentTimeMillis(), restant) } catch (e: Exception) { /* jamais bloquant */ }
         if (Reglages.departAuto(c) && Solde.rechargeDetectee(avant, restant)) { Reglages.departMo(c, carte.emplacement, restant); Reglages.alerteEnvoyee(c, carte.emplacement, false) }
         val depart = Reglages.departMo(c, carte.emplacement)
         if (depart > 0 && Solde.seuilAtteint(restant, depart, Reglages.seuilPourcent(c))) {

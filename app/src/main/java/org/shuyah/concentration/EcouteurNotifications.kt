@@ -27,6 +27,8 @@ class EcouteurNotifications : NotificationListenerService() {
             val titre = x.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty()
             val texte = (x.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT) ?: x.getCharSequence(android.app.Notification.EXTRA_TEXT))?.toString().orEmpty()
             Reseau.traiterSms(this, titre, texte)
+            // Un SMS vient d'arriver : les paiements qu'il contient (le cas échéant) rejoignent la base locale
+            Thread { Sms.synchroniser(applicationContext) }.start()
         } catch (e: Exception) { /* jamais bloquant pour la suite du traitement */ }
     }
 

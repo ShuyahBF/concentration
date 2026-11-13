@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- SMS de paiement : lecture de la boîte de réception pour constituer la base locale des paiements (application privée, hors Play Store) -->
+    <uses-permission android:name="android.permission.READ_SMS" />
+
     <!-- Niveau 3 : reprise du planning au redémarrage du téléphone et réveils exacts au début / à la fin des plages -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />

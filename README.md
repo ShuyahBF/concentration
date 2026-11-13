@@ -2,6 +2,10 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
+## Version 1.14 — Consommation Internet et base des paiements (SMS)
+- **3e onglet « Consommation »** : à chaque vérification du solde (bouton « Solde » ou vérification automatique), le volume restant est mémorisé par carte SIM. La consommation entre deux vérifications est estimée (volume précédent − volume actuel) et tracée : **courbe du volume restant** et **barres de la consommation par jour** (périodes 7 / 30 / 90 jours), moyenne par jour, durée estimée du volume restant. Une recharge (volume qui remonte) est signalée et ne compte pas comme consommation.
+- **4e onglet « Paiements »** : lecture des **SMS** (autorisation « SMS », application privée hors Play Store) ; les SMS de paiement (Orange Money, Moov, Telecel, banques) sont reconnus (dépense ou recette, montant, tiers, solde) et rangés dans une **base locale** SQLite. Totaux dépenses / recettes et liste. Un nouveau SMS déclenche la lecture (via l'accès aux notifications). Seuls les paiements sont conservés, uniquement sur le téléphone.
+
 ## Fonctions (version 1.6)
 - **Plages horaires** multiples, passant minuit, avec choix des jours (lettres L M M J V S D).
 - **Quelles applications ?** : « celles que je choisis » (par défaut WhatsApp et WhatsApp Business) ou « toutes, sauf celles que j'autorise » (par défaut Claude). Le téléphone, les SMS, le clavier, les réglages et l'écran d'accueil restent toujours libres.

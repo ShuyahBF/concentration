@@ -41,11 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 
-private val Bleu = Color(0xFF0E6BA8)
-private val BleuNuit = Color(0xFF0B1F3A)
-private val Vert = Color(0xFF2E9E6B)
-private val Rouge = Color(0xFFD64545)
-private val Orange = Color(0xFFF6A35B)
+internal val Bleu = Color(0xFF0E6BA8)
+internal val BleuNuit = Color(0xFF0B1F3A)
+internal val Vert = Color(0xFF2E9E6B)
+internal val Rouge = Color(0xFFD64545)
+internal val Orange = Color(0xFFF6A35B)
 
 /** Écran unique : état, plages horaires, niveau 1 (notifications), niveau 2 (verrou), autorisations et conseils Xiaomi. */
 class MainActivity : ComponentActivity() {
@@ -128,6 +128,8 @@ private fun Ecran(retour: Int) {
     TabRow(selectedTabIndex = onglet, containerColor = Color.White, contentColor = Bleu) {
         Tab(selected = onglet == 0, onClick = { onglet = 0 }, text = { Text("Général") })
         Tab(selected = onglet == 1, onClick = { onglet = 1 }, text = { Text("Réseau mobile") })
+        Tab(selected = onglet == 2, onClick = { onglet = 2 }, text = { Text("Consommation") })
+        Tab(selected = onglet == 3, onClick = { onglet = 3 }, text = { Text("Paiements") })
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (onglet == 0) {
@@ -305,7 +307,7 @@ private fun Ecran(retour: Int) {
             }
         }
         Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
-        } else {
+        } else if (onglet == 1) {
             // ---- Onglet « Réseau mobile » : réglages de l'interrogation des cartes SIM (le résultat s'affiche dans la carte bleue de l'onglet Général) ----
             Section("Réseau mobile", Icons.Filled.SimCard) {
                 Autorisation("Téléphone, appels et notifications (lecture des cartes SIM, envoi du code, alerte)", okReseau) {
@@ -379,6 +381,14 @@ private fun Ecran(retour: Int) {
                     fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
             }
             Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+        } else if (onglet == 2) {
+            // ---- 3e onglet « Consommation » : graphique de la consommation Internet estimée entre deux vérifications du solde ----
+            OngletConsommation(cartes, tickLecture, maintenant)
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+        } else {
+            // ---- 4e onglet « Paiements » : base des SMS de paiement ----
+            OngletPaiements(retour, maintenant)
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
         }
     }
     }
@@ -423,7 +433,7 @@ private fun Carte(fond: Color, contenu: @Composable ColumnScope.() -> Unit) =
 
 /** Section blanche avec un titre et son pictogramme. */
 @Composable
-private fun Section(titre: String, icone: ImageVector, contenu: @Composable ColumnScope.() -> Unit) {
+internal fun Section(titre: String, icone: ImageVector, contenu: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 8.dp)) {
             Icon(icone, null, tint = Bleu, modifier = Modifier.size(24.dp))
@@ -435,12 +445,12 @@ private fun Section(titre: String, icone: ImageVector, contenu: @Composable Colu
 
 /** Pictogramme rond. */
 @Composable
-private fun Pastille(icone: ImageVector, fond: Color, couleur: Color, taille: Int = 48) =
+internal fun Pastille(icone: ImageVector, fond: Color, couleur: Color, taille: Int = 48) =
     Box(Modifier.size(taille.dp).clip(CircleShape).background(fond), contentAlignment = Alignment.Center) { Icon(icone, null, tint = couleur, modifier = Modifier.size((taille * 0.55).dp)) }
 
 /** Action = pictogramme rond + légende courte. */
 @Composable
-private fun Action(icone: ImageVector, legende: String, surAppui: () -> Unit) =
+internal fun Action(icone: ImageVector, legende: String, surAppui: () -> Unit) =
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { surAppui() }) {
         Pastille(icone, Orange, BleuNuit, 52); Text(legende, fontSize = 12.sp, color = BleuNuit, modifier = Modifier.padding(top = 4.dp))
     }
@@ -453,7 +463,7 @@ private fun LigneInterrupteur(texte: String, valeur: Boolean, surChangement: (Bo
 
 /** Ligne d'autorisation : coche verte si accordée, croix rouge sinon ; un appui ouvre le réglage du système. */
 @Composable
-private fun Autorisation(texte: String, accordee: Boolean, surAppui: () -> Unit) =
+internal fun Autorisation(texte: String, accordee: Boolean, surAppui: () -> Unit) =
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clickable { surAppui() }) {
         Icon(if (accordee) Icons.Filled.CheckCircle else Icons.Filled.Cancel, null, tint = if (accordee) Vert else Rouge, modifier = Modifier.size(26.dp))
         Text(texte + if (accordee) " : activé" else " : à activer (appuyez ici)", fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(start = 8.dp))
