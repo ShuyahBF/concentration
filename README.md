@@ -2,6 +2,12 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
+## Version 1.19 — envoi des paiements à SAWALI, suppression impossible
+- **Envoi à SAWALI** : nouvelle section dans l'onglet Paiements. Dans SAWALI (menu « Transactions SMS », administrateur) on ajoute le téléphone, SAWALI donne un identifiant et une clé (montrée une seule fois) ; on les saisit ici. Les paiements partent par lots de 300, une seule fois chacun, sans doublon ; envoi automatique à chaque nouveau paiement et après chaque lecture de SMS passés (désactivable), ou bouton « Enregistrer et envoyer maintenant ».
+- SAWALI affiche les transactions avec les mêmes filtres que l'onglet Paiements et peut associer un numéro à une plateforme (ex. ALBARKA) pour qu'elle retrouve ses paiements sans les ressaisir.
+- **Les SMS lus ne peuvent plus être supprimés** : le bouton « Supprimer » du détail est grisé.
+- Les paiements déjà enregistrés sur le téléphone sont envoyés au premier envoi.
+
 ## Version 1.18 — SMS passés et statistiques interactives des paiements
 - **Lecture de TOUS les SMS passés** : seuls les SMS de paiement (Orange Money, Moov, Telecel, banques) sont gardés dans la base locale, les autres sont lus puis oubliés ; aucun doublon si on relit.
 - **Deux versions de l'application** (même code, même identifiant) :

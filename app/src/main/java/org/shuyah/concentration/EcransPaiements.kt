@@ -87,6 +87,7 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
             bilan = if (resultat == null) "Lecture impossible : fichier illisible ou autorisation refusée."
             else "${resultat.lus} SMS lus · ${resultat.paiements} paiements reconnus · ${resultat.ajoutes} nouveaux ajoutés" + if (resultat.paiements > resultat.ajoutes) " (les autres étaient déjà dans la base)" else ""
             version++
+            if (resultat != null) EnvoiSawali.envoyerEnArrierePlan(c)                                  // les nouveaux paiements partent vers SAWALI (si configuré)
         }
     }
     val choixFichier = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -121,6 +122,36 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         Text("Sauvegarde : installez l'application gratuite « SMS Backup & Restore », appuyez sur « Sauvegarder maintenant » (SMS seulement, sur le téléphone), puis choisissez ici le fichier .xml créé.", fontSize = 11.sp, color = GRIS_CLAIR, modifier = Modifier.padding(top = 4.dp))
         if (occupe) { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp)); Text(progres, fontSize = 12.sp, color = GRIS, modifier = Modifier.padding(top = 4.dp)) }
         bilan?.let { Text(it, fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(top = 8.dp)) }
+    }
+
+    // ------------------------------------------------------------------ 1 bis. Envoi à SAWALI (menu « Transactions SMS » de SAWALI)
+    var urlSawali by remember { mutableStateOf(Reglages.sawaliUrl(c)) }
+    var sourceSawali by remember { mutableStateOf(Reglages.sawaliSource(c)) }
+    var cleSawali by remember { mutableStateOf(Reglages.sawaliCle(c)) }
+    var voirCle by remember { mutableStateOf(false) }
+    var envoiAuto by remember { mutableStateOf(Reglages.sawaliAuto(c)) }
+    var envoiEnCours by remember { mutableStateOf(false) }
+    var messageEnvoi by remember { mutableStateOf<String?>(null) }
+    val enAttente = remember(version, envoiEnCours) { Historique.de(c).nombreNonEnvoyes() }
+    Section("Envoi à SAWALI", Icons.Filled.CloudUpload) {
+        Text("SAWALI affiche vos transactions SMS (menu « Transactions SMS », administrateur) avec les mêmes filtres, et peut associer un numéro à une plateforme (ALBARKA…). Dans SAWALI : Transactions SMS → Téléphones source → Ajouter, puis saisissez ici l'identifiant et la clé.", fontSize = 12.sp, color = GRIS)
+        OutlinedTextField(urlSawali, { urlSawali = it }, label = { Text("Adresse de SAWALI (laisser vide : adresse habituelle)") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+        OutlinedTextField(sourceSawali, { sourceSawali = it }, label = { Text("Identifiant du téléphone") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        OutlinedTextField(cleSawali, { cleSawali = it }, label = { Text("Clé du téléphone") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            visualTransformation = if (voirCle) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation())
+        Text(if (voirCle) "Masquer la clé" else "Afficher la clé", fontSize = 13.sp, color = Bleu, modifier = Modifier.padding(top = 2.dp).clickable { voirCle = !voirCle })
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+            Switch(envoiAuto, { envoiAuto = it; Reglages.sawaliAuto(c, it) }); Spacer(Modifier.width(8.dp))
+            Text("Envoyer automatiquement chaque nouveau paiement", fontSize = 13.sp, color = BleuNuit)
+        }
+        Text("$enAttente paiement(s) en attente d'envoi.", fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(top = 6.dp))
+        Button({
+            Reglages.sawali(c, urlSawali, sourceSawali, cleSawali)
+            envoiEnCours = true; messageEnvoi = null
+            portee.launch { val b = withContext(Dispatchers.IO) { EnvoiSawali.envoyer(c) }; envoiEnCours = false; messageEnvoi = b.message + if (b.restants > 0) " ${b.restants} restant(s)." else ""; version++ }
+        }, enabled = !envoiEnCours && EnvoiSawali.configure(sourceSawali, cleSawali), modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Icon(Icons.Filled.CloudUpload, null); Spacer(Modifier.width(8.dp)); Text("Enregistrer et envoyer maintenant") }
+        if (envoiEnCours) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+        messageEnvoi?.let { Text(it, fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(top = 6.dp)) }
     }
 
     if (toutes.isEmpty()) {
@@ -263,10 +294,12 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
                     p.soldeApres?.let { Text("Solde après : " + francs(it), fontSize = 12.sp, color = GRIS) }
                     p.reference?.let { Text("Transaction : $it", fontSize = 12.sp, color = GRIS) }
                     Text(p.corps, fontSize = 12.sp, color = BleuNuit, modifier = Modifier.padding(top = 8.dp).background(FOND_GRAPHIQUE).padding(8.dp))
+                    Text("Les SMS lus ne peuvent pas être supprimés.", fontSize = 11.sp, color = GRIS_CLAIR, modifier = Modifier.padding(top = 6.dp))
                 }
             },
             confirmButton = { TextButton({ ouvert = null }) { Text("Fermer") } },
-            dismissButton = { TextButton({ if (p.id > 0) { Historique.de(c).supprimerPaiement(p.id); version++ }; ouvert = null }) { Text("Supprimer", color = Rouge) } })
+            // Un SMS lu ne peut pas être supprimé : le bouton reste visible mais grisé (demande du propriétaire du 14/11/2026)
+            dismissButton = { TextButton({}, enabled = false) { Text("Supprimer (impossible)") } })
     }
 }
 

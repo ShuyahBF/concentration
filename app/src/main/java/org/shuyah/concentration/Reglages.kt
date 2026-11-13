@@ -9,6 +9,15 @@ import android.content.Context
 object Reglages {
     private fun p(c: Context) = c.getSharedPreferences("concentration", Context.MODE_PRIVATE)
 
+    // ---- Envoi des paiements à SAWALI (v1.19) : adresse, identifiant du téléphone et clé donnés par SAWALI (menu « Transactions SMS ») ----
+    fun sawaliUrl(c: Context) = p(c).getString("sawali_url", "") ?: ""
+    fun sawaliSource(c: Context) = p(c).getString("sawali_source", "") ?: ""
+    fun sawaliCle(c: Context) = p(c).getString("sawali_cle", "") ?: ""
+    fun sawali(c: Context, url: String, source: String, cle: String) = p(c).edit().putString("sawali_url", url.trim()).putString("sawali_source", source.trim()).putString("sawali_cle", cle.trim()).apply()
+    /** Envoi automatique à chaque nouveau paiement et après chaque lecture de SMS passés (activé par défaut). */
+    fun sawaliAuto(c: Context) = p(c).getBoolean("sawali_auto", true)
+    fun sawaliAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("sawali_auto", v).apply()
+
     /** Interrupteur général. */
     fun actif(c: Context) = p(c).getBoolean("actif", true)
     fun actif(c: Context, v: Boolean) = p(c).edit().putBoolean("actif", v).apply()
