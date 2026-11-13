@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Version « sms » : seule différence avec la version « standard » = l'autorisation de LIRE les SMS reçus (pour relire toute la boîte de réception et en extraire les paiements). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.READ_SMS" />
+</manifest>

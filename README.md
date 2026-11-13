@@ -2,6 +2,15 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
+## Version 1.18 — SMS passés et statistiques interactives des paiements
+- **Lecture de TOUS les SMS passés** : seuls les SMS de paiement (Orange Money, Moov, Telecel, banques) sont gardés dans la base locale, les autres sont lus puis oubliés ; aucun doublon si on relit.
+- **Deux versions de l'application** (même code, même identifiant) :
+  - `concentration-1.18.apk` (« standard ») : SANS l'autorisation de lire les SMS, donc sans souci avec Google Play Protect ; les SMS passés s'importent depuis un fichier de sauvegarde XML de l'application gratuite « SMS Backup & Restore » (bouton « Importer une sauvegarde de SMS (XML) »).
+  - `concentration-1.18-sms.apk` : déclare l'autorisation « lire les SMS » et ajoute le bouton « Lire tous les SMS de ma boîte ». Si Android grise l'autorisation : Réglages → Applications → Concentration → ⋮ → « Autoriser les paramètres restreints ». Play Protect peut bloquer l'installation (le suspendre le temps de l'installer).
+- **Onglet Paiements refait, dans l'esprit de l'Historique d'auRor** : filtres (période dont dates personnalisées, opérateur, dépenses / recettes, recherche par bénéficiaire, numéro de transaction ou texte), chiffres clés (nombre, dépenses, recettes, solde net, moyenne, plus grosse dépense), cartes par opérateur, histogramme par jour ou par mois en montant ou en nombre, Top 10 des bénéficiaires et des montants, camembert des parts, liste paginée avec le SMS complet, partage en CSV.
+- **Interactif** : toucher un opérateur, une barre de l'histogramme ou un bénéficiaire du classement filtre tout l'écran sur cet élément.
+- Code : `StatsPaiements.kt` (calculs purs, testés), `ImportSms.kt`, `EcransPaiements.kt`.
+
 ## Version 1.16 — lecture corrigée des SMS Orange Money
 - Montant : « 2,150.00 FCFA » est lu **2 150** (et non 150) : la virgule peut séparer les milliers, le point les décimales (« 6403.0202 » = 6 403). Les paiements déjà enregistrés sont relus à la mise à jour.
 - **Bénéficiaire** (le nom répété deux fois par Orange Money n'est gardé qu'une fois) et **numéro de transaction** (ex. MP261113.1339.95787510 = date AAMMJJ . heure HHMM . numéro chronologique) ; la date et l'heure du paiement sont celles du numéro de transaction.

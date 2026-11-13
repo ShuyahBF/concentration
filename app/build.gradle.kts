@@ -16,12 +16,20 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 18
-        versionName = "1.17"
+        versionCode = 19
+        versionName = "1.18"
         // Nom du fichier livré : concentration-<version>-debug.apk (copié ensuite en concentration-<version>.apk)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Date et heure de compilation, affichées en bas de l'écran principal.
         buildConfigField("String", "DATE_COMPILATION", "\"" + SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date()) + "\"")
+    }
+    // Deux versions de la MÊME application (même code) :
+    //  - « standard » : sans l'autorisation de lire les SMS (s'installe sans souci avec Google Play Protect) ; les SMS passés s'importent depuis un fichier de sauvegarde ;
+    //  - « sms »     : déclare l'autorisation de lire les SMS (src/sms/AndroidManifest.xml) ; lit directement toute la boîte de réception. Play Protect peut la bloquer à l'installation.
+    flavorDimensions += "lecture"
+    productFlavors {
+        create("standard") { dimension = "lecture"; buildConfigField("boolean", "SMS_DIRECT", "false") }
+        create("sms") { dimension = "lecture"; buildConfigField("boolean", "SMS_DIRECT", "true") }
     }
     buildTypes { release { isMinifyEnabled = false } }
     compileOptions {
