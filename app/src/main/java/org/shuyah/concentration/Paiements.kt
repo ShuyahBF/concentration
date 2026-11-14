@@ -7,7 +7,7 @@ import java.util.Locale
  *
  * Un SMS est retenu comme paiement quand il contient UN MONTANT en francs CFA ET un mot qui indique le sens de l'opération
  * (dépense : payé, achat, retrait, envoi, transfert, facture, débit ; recette : reçu, dépôt, crédit, versement). Les SMS promotionnels
- * (« gagnez », « promo », « offre »…) et ceux sans montant sont ignorés. Le texte des SMS d'opérateurs n'étant pas normalisé, la lecture est
+ * (« gagnez », « promo », « offre »…), les alertes de banque, les messages de personnes (voir ClassificationSms) et ceux sans montant sont ignorés. Le texte des SMS d'opérateurs n'étant pas normalisé, la lecture est
  * volontairement prudente : en cas de doute le SMS est ignoré plutôt que mal classé.
  */
 object Paiements {
@@ -111,6 +111,8 @@ object Paiements {
             else -> return null
         }
         val reference = referenceDe(corps)
+        // Seul un SMS de TRANSACTION est gardé : promo, alerte de banque et message d'une personne sont ignorés (voir ClassificationSms)
+        if (ClassificationSms.categorie(adresse, corps, reference) != ClassificationSms.Categorie.TRANSACTION) return null
         return Paiement(adresse, dateDeReference(reference) ?: recuLeMs, genre, montant, tiersDe(corps, genre), soldeDe(corps), corps.trim(), reference)
     }
 }
