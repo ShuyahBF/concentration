@@ -84,3 +84,9 @@ Quand la connexion de la carte SIM est coupée (passage en Wi-Fi), l'opérateur 
 - **À la lecture** : un relevé qui fait disparaître plus de 90 % d'un volume d'au moins 500 Mo en moins d'une heure est **ignoré** (ni enregistré, ni fausse alerte « presque épuisé », la date d'expiration n'est pas effacée).
 - **Dans l'historique** (y compris les mesures déjà enregistrées) : un « creux » isolé — le volume tombe à moins de 10 % puis remonte à au moins 80 % du dernier bon relevé — est écarté du graphique et des totaux ; l'écran signale « N mesure(s) ignorée(s) ». Un volume réellement épuisé (qui ne remonte pas) est conservé.
 - **Affichage** : une consommation est toujours positive (« 95 Mo », jamais « −95 Mo »).
+
+### Version compacte (fichier léger)
+
+`gradle -Pcompact=true assembleSmsRelease` (ou `assembleStandardRelease`) produit un APK **réduit par R8** : environ **1,4 Mo au lieu de 16 Mo** (code et icônes inutilisés retirés). Il est signé avec la clé de debug, donc il **s'installe par-dessus** les versions de test déjà installées.
+Utile quand le téléchargement du gros fichier échoue ou dépasse une limite d'envoi (Google Drive : 10 Mo). Par défaut (sans `-Pcompact=true`) les compilations ne changent pas.
+Limite : la réduction du code peut, en théorie, retirer une classe appelée seulement par réflexion ; si un écran se comporte autrement qu'avec la version normale, revenir à celle-ci et le signaler.
