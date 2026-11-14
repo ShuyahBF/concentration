@@ -142,8 +142,9 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         Text(if (voirCle) "Masquer la clé" else "Afficher la clé", fontSize = 13.sp, color = Bleu, modifier = Modifier.padding(top = 2.dp).clickable { voirCle = !voirCle })
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
             Switch(envoiAuto, { envoiAuto = it; Reglages.sawaliAuto(c, it) }); Spacer(Modifier.width(8.dp))
-            Text("Envoyer automatiquement chaque nouveau paiement", fontSize = 13.sp, color = BleuNuit)
+            Column { Text("Envoyer automatiquement chaque nouveau paiement", fontSize = 13.sp, color = BleuNuit); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Filled.CheckCircle, null, tint = Vert, modifier = Modifier.size(14.dp)); Text(" Enregistré automatiquement dès que vous basculez", fontSize = 11.sp, color = GRIS_CLAIR) } }
         }
+        Text("Adresse, identifiant et clé ne sont enregistrés qu'avec le bouton « Enregistrer et envoyer maintenant » ci-dessous.", fontSize = 11.sp, color = GRIS_CLAIR, modifier = Modifier.padding(top = 4.dp))
         Text("$enAttente paiement(s) en attente d'envoi.", fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(top = 6.dp))
         Button({
             Reglages.sawali(c, urlSawali, sourceSawali, cleSawali)
@@ -176,7 +177,7 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton({ version++ }) { Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(4.dp)); Text("Actualiser") }
-            if (filtreActif) OutlinedButton({ filtre = StatsPaiements.Filtre(periode = "tout"); recherche = ""; barreChoisie = null; affiches = TAILLE_PAGE }) { Text("Réinitialiser") }
+            if (filtreActif) OutlinedButton({ filtre = StatsPaiements.Filtre(periode = "tout"); recherche = ""; barreChoisie = null; affiches = TAILLE_PAGE }) { Icon(Icons.Filled.RestartAlt, null); Spacer(Modifier.width(4.dp)); Text("Réinitialiser") }
         }
     }
 
@@ -281,7 +282,7 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
                 Text((if (p.genre == "RECETTE") "+ " else "− ") + francs(p.montant), fontSize = 14.sp, color = if (p.genre == "RECETTE") Vert else Rouge, textAlign = TextAlign.End)
             }
         }
-        if (filtrees.size > affiches) OutlinedButton({ affiches += TAILLE_PAGE }, Modifier.fillMaxWidth().padding(top = 10.dp)) { Text("Afficher plus (${filtrees.size - affiches} restants)") }
+        if (filtrees.size > affiches) OutlinedButton({ affiches += TAILLE_PAGE }, Modifier.fillMaxWidth().padding(top = 10.dp)) { Icon(Icons.Filled.ExpandMore, null); Spacer(Modifier.width(4.dp)); Text("Afficher plus (${filtrees.size - affiches} restants)") }
     }
 
     // ------------------------------------------------------------------ Détail d'un paiement : le SMS en entier, suppression possible
@@ -297,9 +298,9 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
                     Text("Les SMS lus ne peuvent pas être supprimés.", fontSize = 11.sp, color = GRIS_CLAIR, modifier = Modifier.padding(top = 6.dp))
                 }
             },
-            confirmButton = { TextButton({ ouvert = null }) { Text("Fermer") } },
+            confirmButton = { TextButton({ ouvert = null }) { Icon(Icons.Filled.Close, null); Spacer(Modifier.width(4.dp)); Text("Fermer") } },
             // Un SMS lu ne peut pas être supprimé : le bouton reste visible mais grisé (demande du propriétaire du 14/11/2026)
-            dismissButton = { TextButton({}, enabled = false) { Text("Supprimer (impossible)") } })
+            dismissButton = { TextButton({}, enabled = false) { Icon(Icons.Filled.Delete, null); Spacer(Modifier.width(4.dp)); Text("Supprimer (impossible)") } })
     }
 }
 

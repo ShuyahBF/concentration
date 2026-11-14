@@ -2,6 +2,10 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
+## Version 1.20 — pictogrammes sur toutes les actions (règle 15)
+- Chaque action de l'onglet Paiements porte son pictogramme (Réinitialiser, Afficher plus, Fermer, Supprimer grisé…).
+- Plus d'enregistrement « deviné » : l'interrupteur d'envoi automatique indique « Enregistré automatiquement dès que vous basculez » ; adresse, identifiant et clé s'enregistrent par le bouton « Enregistrer et envoyer maintenant », dit explicitement.
+
 ## Version 1.19 — envoi des paiements à SAWALI, suppression impossible
 - **Envoi à SAWALI** : nouvelle section dans l'onglet Paiements. Dans SAWALI (menu « Transactions SMS », administrateur) on ajoute le téléphone, SAWALI donne un identifiant et une clé (montrée une seule fois) ; on les saisit ici. Les paiements partent par lots de 300, une seule fois chacun, sans doublon ; envoi automatique à chaque nouveau paiement et après chaque lecture de SMS passés (désactivable), ou bouton « Enregistrer et envoyer maintenant ».
 - SAWALI affiche les transactions avec les mêmes filtres que l'onglet Paiements et peut associer un numéro à une plateforme (ex. ALBARKA) pour qu'elle retrouve ses paiements sans les ressaisir.
