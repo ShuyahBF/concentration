@@ -68,7 +68,8 @@ object Reseau {
                 override fun onReceiveUssdResponse(telephonyManager: TelephonyManager, request: String, response: CharSequence) =
                     terminer(ReponseUssd(response.toString(), null))
                 override fun onReceiveUssdResponseFailed(telephonyManager: TelephonyManager, request: String, failureCode: Int) =
-                    terminer(ReponseUssd(null, if (failureCode == TelephonyManager.USSD_ERROR_SERVICE_UNAVAIL) "Service USSD indisponible sur cette carte." else "L'opérateur a refusé ou n'a pas compris le code."))
+                    terminer(ReponseUssd(null, (if (failureCode == TelephonyManager.USSD_ERROR_SERVICE_UNAVAIL) "Service USSD indisponible sur cette carte." else "L'opérateur a refusé ou n'a pas compris le code.") +
+                        " (code d'échec $failureCode : certains menus ne s'obtiennent que par le composeur du téléphone)"))
             }, principal)
         } catch (e: SecurityException) { terminer(ReponseUssd(null, "Autorisation refusée par le téléphone."))
         } catch (e: Exception) { terminer(ReponseUssd(null, "Envoi impossible : " + (e.message ?: e.javaClass.simpleName))) }
