@@ -45,12 +45,24 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
     val cartes = remember(maintenant) { Reseau.cartes(c) }
     val restantes = VerifOperateur.restantes(Reglages.horairesVerif(c), System.currentTimeMillis())
 
-    // Mise à jour de la copie locale des codes dès l'ouverture : sans Internet, la copie déjà enregistrée reste utilisée
-    LaunchedEffect(Unit) {
-        val reussi = withContext(Dispatchers.IO) { CodesUssd.actualiser(c) }
-        horsLigne = !reussi
-        copie = CodesUssd.copie(c)
+    var actualisation by remember { mutableStateOf(false) }                                  // relecture des codes d'auRor en cours
+    var messageCodes by remember { mutableStateOf<String?>(null) }                           // résultat de la dernière relecture demandée
+
+    /** Relit les codes d'auRor (sans quitter ni relancer l'application) ; sans Internet, la copie déjà enregistrée reste utilisée. */
+    fun actualiserCodes(manuel: Boolean) {
+        if (actualisation) return
+        actualisation = true; if (manuel) messageCodes = null
+        portee.launch {
+            val reussi = withContext(Dispatchers.IO) { CodesUssd.actualiser(c) }
+            horsLigne = !reussi
+            copie = CodesUssd.copie(c)
+            actualisation = false
+            if (manuel) messageCodes = if (reussi) "Codes d'auRor relus : ${copie?.codes?.size ?: 0} code(s) à jour." else "auRor est injoignable (pas d'Internet ?) : la copie déjà enregistrée reste utilisée."
+        }
     }
+
+    // Mise à jour de la copie locale des codes dès l'ouverture
+    LaunchedEffect(Unit) { actualiserCodes(false) }
 
     /** Envoie le code (avec le code secret si besoin) puis range la réponse et les opérations absentes de la base. */
     fun envoyer(carte: Reseau.CarteSim, code: CodesUssd.Code, codeSecret: String?) {
@@ -98,7 +110,7 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
             val releve = CodesUssd.trouver(copie, carte.operateur, CodesUssd.USAGE_RELEVE)
             val notif = CodesUssd.trouver(copie, carte.operateur, CodesUssd.USAGE_NOTIFICATION)
             if (releve == null) {
-                Text("${carte.operateur} : aucun code « mini relevé » dans auRor" + if (copie == null) " (Internet n'a jamais répondu : connectez-vous une fois)." else " (à ajouter dans auRor → Carnet USSD).", fontSize = 12.sp, color = Rouge, modifier = Modifier.padding(top = 4.dp))
+                Text("${carte.operateur} : aucun code « mini relevé » dans auRor" + if (copie == null) " (Internet n'a jamais répondu : connectez-vous une fois)." else " (à ajouter dans auRor → Codes USSD, puis appuyez sur « Actualiser les codes d'auRor »).", fontSize = 12.sp, color = Rouge, modifier = Modifier.padding(top = 4.dp))
             } else {
                 Button({ if (releve.demandePin) { pin = ""; cible = carte to releve } else envoyer(carte, releve, null) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Icon(Icons.Filled.FactCheck, null); Spacer(Modifier.width(8.dp)); Text("Vérifier ${carte.operateur} : ${releve.titre}")
@@ -118,6 +130,12 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
                 horsLigne -> "Codes d'auRor : copie du ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).format(le)} (hors ligne : elle reste utilisable)."
                 else -> "Codes d'auRor à jour (version ${copie?.version})."
             }, fontSize = 11.sp, color = Color(0xFF64748B))
+
+        // Bouton « Actualiser les codes » : relit les codes d'auRor à la demande (sans quitter ni relancer Concentration)
+        OutlinedButton({ actualiserCodes(true) }, enabled = !actualisation, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(8.dp)); Text(if (actualisation) "Lecture des codes d'auRor…" else "Actualiser les codes d'auRor")
+        }
+        messageCodes?.let { Text(it, fontSize = 12.sp, color = BleuNuit, modifier = Modifier.padding(top = 4.dp)) }
 
         // 3. Réponse de l'opérateur et rapprochement avec la base
         if (enCours) { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp)); Text("En attente de l'opérateur…", fontSize = 12.sp, color = BleuNuit) }

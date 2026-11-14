@@ -8,7 +8,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
- * CODES USSD CENTRALISÉS PAR auRor : la base des codes de tous les logiciels du propriétaire est tenue dans auRor (page « Carnet USSD »).
+ * CODES USSD CENTRALISÉS PAR auRor : la base des codes de tous les logiciels du propriétaire est tenue dans auRor (page « Codes USSD »).
  * Concentration ne contient AUCUN code écrit en dur : il lit la base d'auRor, en garde une COPIE LOCALE et s'en sert même sans Internet.
  * Si Orange ou Moov change un menu, l'administrateur corrige le code dans auRor ; ici, la copie se met à jour toute seule au prochain accès à Internet.
  *
