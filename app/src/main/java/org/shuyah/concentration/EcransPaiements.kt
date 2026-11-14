@@ -107,6 +107,10 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
     val totalSens = if (sens == "DEPENSE") tot.depenses else tot.recettes
     val filtreActif = filtre != StatsPaiements.Filtre(periode = "tout")
 
+    // ------------------------------------------------------------------ 0. Vérifier auprès de l'opérateur (paiement attendu sans SMS)
+    SectionVerifOperateur(maintenant) { version++ }
+    Spacer(Modifier.height(12.dp))
+
     // ------------------------------------------------------------------ 1. Alimenter la base
     Section("Récupérer mes SMS de paiement", Icons.Filled.Sms) {
         Autorisation("Accès aux notifications (lecture des nouveaux SMS de paiement)", acces) { ouvrir(c, Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }

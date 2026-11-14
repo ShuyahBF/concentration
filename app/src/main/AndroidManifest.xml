@@ -39,6 +39,8 @@
         </service>
         <receiver android:name=".RecepteurReseau" android:exported="false" />
         <receiver android:name=".RecepteurExpiration" android:exported="false" />
+        <!-- « J'attends un paiement » : contrôle 30 minutes plus tard, notification si rien n'est arrivé -->
+        <receiver android:name=".RecepteurAttente" android:exported="false" />
         <receiver android:name=".RecepteurPlanning" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
