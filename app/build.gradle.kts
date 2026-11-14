@@ -31,7 +31,18 @@ android {
         create("standard") { dimension = "lecture"; buildConfigField("boolean", "SMS_DIRECT", "false") }
         create("sms") { dimension = "lecture"; buildConfigField("boolean", "SMS_DIRECT", "true") }
     }
-    buildTypes { release { isMinifyEnabled = false } }
+    // Version COMPACTE (-Pcompact=true) : code et ressources réduits par R8, signée avec la clé de debug pour pouvoir s'installer par-dessus les versions de test.
+    // Sert à obtenir un fichier léger (moins de 10 Mo) quand le téléchargement du fichier habituel (16 Mo) échoue. Par défaut, rien ne change.
+    buildTypes {
+        release {
+            if (project.findProperty("compact") == "true") {
+                isMinifyEnabled = true
+                isShrinkResources = true
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+                signingConfig = signingConfigs.getByName("debug")
+            } else isMinifyEnabled = false
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
