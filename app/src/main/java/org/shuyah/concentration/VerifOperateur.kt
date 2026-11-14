@@ -44,6 +44,17 @@ object VerifOperateur {
     private fun normaliser(ligne: String): String =
         if (Regex("^(?:\\d+[.)]\\s*)?(?:re[cç]u|recue|dép[ôo]t|depot)\\b", RegexOption.IGNORE_CASE).containsMatchIn(ligne)) "Vous avez reçu " + ligne.replaceFirst(Regex("^(?:\\d+[.)]\\s*)?\\p{L}+\\s*", RegexOption.IGNORE_CASE), "") else ligne
 
+    private val NUMERO_TRANSACTION = Regex("[A-Z]{2}\\d{6}\\.\\d{4}\\.\\d+")
+
+    /** Numéros de transaction (ex. MP261113.1339.95787510) d'un texte, sans doublon, dans l'ordre. Sert à lire la liste « dernières opérations » du menu de l'opérateur. */
+    fun referencesDuTexte(texte: String): List<String> = NUMERO_TRANSACTION.findAll(texte).map { it.value }.distinct().toList()
+
+    /** Numéros de la liste de l'opérateur qui ne sont PAS dans la base : paiements reçus sans SMS. */
+    fun referencesAbsentes(refs: List<String>, base: List<Paiements.Paiement>): List<String> {
+        val connues = base.mapNotNull { it.reference }.toSet()
+        return refs.filter { it !in connues }
+    }
+
     /**
      * Opérations du relevé ABSENTES de la base. Avec un numéro de transaction : comparaison exacte. Sans numéro : une opération de même sens et de même montant
      * déjà enregistrée dans les 3 derniers jours est considérée comme présente (prudence : on évite d'ajouter un doublon).

@@ -36,6 +36,15 @@ object Reglages {
     fun attenteEchue(c: Context) = p(c).getBoolean("attente_echue", false)
     fun attenteEchue(c: Context, v: Boolean) = p(c).edit().putBoolean("attente_echue", v).apply()
 
+    // ---- Lecture de la fenêtre « Infos de l'opérateur » (v1.25) : liste des dernières opérations affichée par le menu de l'opérateur ----
+    /** Jusqu'à quand (ms) une fenêtre de l'opérateur peut être lue : 2 minutes après l'appui sur « Lire la liste des dernières opérations ». 0 = jamais. */
+    fun menuAttenduJusqua(c: Context) = p(c).getLong("menu_attendu", 0L)
+    fun menuAttenduJusqua(c: Context, v: Long) = p(c).edit().putLong("menu_attendu", v).apply()
+    /** Dernière liste lue : numéros de transaction (séparés par des espaces) et heure de lecture. */
+    fun menuReferences(c: Context): List<String> = (p(c).getString("menu_refs", "") ?: "").split(" ").filter { it.isNotBlank() }
+    fun menuLu(c: Context, refs: List<String>, ms: Long) = p(c).edit().putString("menu_refs", refs.joinToString(" ")).putLong("menu_lu", ms).apply()
+    fun menuLuLe(c: Context) = p(c).getLong("menu_lu", 0L)
+
     /** Interrupteur général. */
     fun actif(c: Context) = p(c).getBoolean("actif", true)
     fun actif(c: Context, v: Boolean) = p(c).edit().putBoolean("actif", v).apply()
