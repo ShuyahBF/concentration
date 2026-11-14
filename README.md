@@ -77,3 +77,10 @@ Concentration ouvre donc le code dans le composeur et **lit la fenêtre « Infos
 Garde-fous : lecture **seulement pendant 2 minutes** après l'appui sur « Lire la liste des dernières opérations » ; seulement la fenêtre du téléphone / de l'opérateur ; **seuls les numéros de transaction sont retenus**, le reste du texte est oublié aussitôt ; Concentration ne saisit rien et ne touche jamais au code secret.
 Le service d'accessibilité était auparavant limité au nom de l'application affichée (`canRetrieveWindowContent` à faux) : il peut désormais lire le contenu de la fenêtre active, mais le code ne le fait que dans les conditions ci-dessus.
 Pour obtenir le SMS d'une opération (montant, nom) : choisir son numéro dans le menu (le code secret est demandé par l'opérateur) ; le SMS reçu est lu comme les autres.
+
+### Consommation : mesures aberrantes (version 1.26)
+
+Quand la connexion de la carte SIM est coupée (passage en Wi-Fi), l'opérateur répond parfois « 0 Mo » : le volume paraissait s'effondrer (fausse consommation de plusieurs Go) puis « remonter » (fausse recharge).
+- **À la lecture** : un relevé qui fait disparaître plus de 90 % d'un volume d'au moins 500 Mo en moins d'une heure est **ignoré** (ni enregistré, ni fausse alerte « presque épuisé », la date d'expiration n'est pas effacée).
+- **Dans l'historique** (y compris les mesures déjà enregistrées) : un « creux » isolé — le volume tombe à moins de 10 % puis remonte à au moins 80 % du dernier bon relevé — est écarté du graphique et des totaux ; l'écran signale « N mesure(s) ignorée(s) ». Un volume réellement épuisé (qui ne remonte pas) est conservé.
+- **Affichage** : une consommation est toujours positive (« 95 Mo », jamais « −95 Mo »).

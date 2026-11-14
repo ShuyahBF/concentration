@@ -117,11 +117,14 @@ object Reseau {
 
     private fun traiterReponse(c: Context, carte: CarteSim, texte: String) {
         // Sans volume (Go, Mo) dans la réponse, l'opérateur répond par une simple phrase : c'est l'absence de forfait Internet (restant = null)
+        val restant = Solde.analyserVolume(texte)
+        val avant = Reglages.restantMo(c, carte.emplacement)
+        // RELEVÉ ABERRANT : connexion de la carte SIM coupée (Wi-Fi), l'opérateur répond « 0 Mo » alors que le volume était de plusieurs Go une heure plus tôt (impossible).
+        // Ce relevé n'est ni enregistré, ni signalé (pas de fausse alerte « presque épuisé »), et n'efface pas la date d'expiration ; le prochain relevé normal rétablit la situation.
+        if (restant != null && Consommation.chuteImpossible(avant, restant, System.currentTimeMillis() - Reglages.lectureHeure(c, carte.emplacement))) return
         // Date d'expiration du forfait (souvent entre parenthèses) : mémorisée par carte, et les rappels J-7, J-3 et du jour sont reprogrammés
         Reglages.expirationMs(c, carte.emplacement, Solde.analyserExpiration(texte, System.currentTimeMillis()) ?: 0L)
         programmerExpirations(c)
-        val restant = Solde.analyserVolume(texte)
-        val avant = Reglages.restantMo(c, carte.emplacement)
         Reglages.derniereLecture(c, carte.emplacement, texte, System.currentTimeMillis(), restant, carte.operateur)
         if (restant == null) return
         // Historique des mesures : sert au graphique de consommation entre deux vérifications (3e onglet)
