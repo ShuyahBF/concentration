@@ -53,13 +53,14 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
     /** Relit les codes d'auRor (sans quitter ni relancer l'application) ; sans Internet, la copie déjà enregistrée reste utilisée. */
     fun actualiserCodes(manuel: Boolean) {
         if (actualisation) return
-        actualisation = true; if (manuel) messageCodes = null
+        actualisation = true; if (manuel) { messageCodes = null; Avis.enCours(c, "Actualisation des codes d'auRor en cours…") }
         portee.launch {
             val reussi = withContext(Dispatchers.IO) { CodesUssd.actualiser(c) }
             horsLigne = !reussi
             copie = CodesUssd.copie(c)
             actualisation = false
             if (manuel) messageCodes = if (reussi) "Codes d'auRor relus : ${copie?.codes?.size ?: 0} code(s) à jour." else "auRor est injoignable (pas d'Internet ?) : la copie déjà enregistrée reste utilisée."
+            if (manuel) messageCodes?.let { Avis.resultat(c, it) }
         }
     }
 

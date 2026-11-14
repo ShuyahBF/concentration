@@ -41,7 +41,8 @@ private fun francs(v: Long) = String.format(Locale.FRANCE, "%,d", v).replace('�
 internal fun OngletConsommation(cartes: List<Reseau.CarteSim>, tickLecture: Int, maintenant: Long) {
     val c = LocalContext.current
     var jours by remember { mutableIntStateOf(30) }                              // période affichée : 7, 30 ou 90 jours
-    val mesuresToutes = remember(tickLecture, maintenant, jours) { Historique.de(c).mesures(System.currentTimeMillis() - jours * 86_400_000L) }
+    var actualisations by remember { mutableIntStateOf(0) }                      // augmente à chaque appui sur « Actualiser » : tout est relu et recalculé
+    val mesuresToutes = remember(tickLecture, maintenant, jours, actualisations) { Historique.de(c).mesures(System.currentTimeMillis() - jours * 86_400_000L) }
     val emplacements = mesuresToutes.map { it.emplacement }.distinct().sorted()
     var choisi by remember { mutableIntStateOf(-1) }
     val slot = if (choisi in emplacements) choisi else (cartes.firstOrNull { it.donnees && it.emplacement in emplacements }?.emplacement ?: emplacements.firstOrNull() ?: 0)
@@ -54,7 +55,17 @@ internal fun OngletConsommation(cartes: List<Reseau.CarteSim>, tickLecture: Int,
     val restantActuel = mesures.lastOrNull()?.restantMo
     val nomCarte = cartes.firstOrNull { it.emplacement == slot }?.operateur ?: Historique.de(c).operateurDe(slot)
 
+    // Après un appui sur « Actualiser » : le résultat est annoncé par un toast (le toast « en cours » est affiché à l'appui)
+    LaunchedEffect(actualisations) {
+        if (actualisations > 0) Avis.resultat(c, "Consommation actualisée : ${mesures.size} mesure(s) prise(s) en compte" + if (ignorees > 0) ", $ignorees ignorée(s) (creux aberrants)." else ".")
+    }
+
     Section("Consommation d'Internet", Icons.Filled.Info) {
+        // Bouton « Actualiser » : relit toutes les mesures et refait le graphique, les totaux et la liste (règle : toute correction qui change des résultats a son bouton)
+        OutlinedButton({ Avis.enCours(c, "Actualisation de la consommation en cours…"); actualisations++ }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(8.dp)); Text("Actualiser")
+        }
+        Spacer(Modifier.height(8.dp))
         // Choix de la période (liste finie : trois boutons à choix exclusif)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(7, 30, 90).forEach { j -> FilterChip(selected = jours == j, onClick = { jours = j }, label = { Text("$j jours") }) }
