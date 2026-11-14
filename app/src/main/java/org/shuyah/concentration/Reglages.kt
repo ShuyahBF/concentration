@@ -18,6 +18,24 @@ object Reglages {
     fun sawaliAuto(c: Context) = p(c).getBoolean("sawali_auto", true)
     fun sawaliAuto(c: Context, v: Boolean) = p(c).edit().putBoolean("sawali_auto", v).apply()
 
+    // ---- Codes USSD centralisés par auRor (v1.21) : copie locale (hors ligne), version (ETag) et limites d'envoi ----
+    /** Adresse d'auRor (vide = adresse par défaut). */
+    fun aurorUrl(c: Context) = p(c).getString("auror_url", "") ?: ""
+    fun aurorUrl(c: Context, v: String) = p(c).edit().putString("auror_url", v.trim()).apply()
+    /** Dernière copie reçue de la base des codes USSD (texte JSON) et son ETag ; vides tant qu'Internet n'a jamais répondu. */
+    fun codesCorps(c: Context) = p(c).getString("codes_corps", "") ?: ""
+    fun codesEtag(c: Context) = p(c).getString("codes_etag", "") ?: ""
+    fun codes(c: Context, corps: String, etag: String) = p(c).edit().putString("codes_corps", corps).putString("codes_etag", etag).putLong("codes_le", System.currentTimeMillis()).apply()
+    fun codesLe(c: Context) = p(c).getLong("codes_le", 0L)
+    /** Heures (ms) des derniers codes envoyés à l'opérateur, séparées par des virgules (gardées 24 h) : sert à limiter le nombre d'envois par jour. */
+    fun horairesVerif(c: Context): List<Long> = (p(c).getString("verif_horaires", "") ?: "").split(",").mapNotNull { it.toLongOrNull() }
+    fun horairesVerif(c: Context, v: List<Long>) = p(c).edit().putString("verif_horaires", v.joinToString(",")).apply()
+    /** Moment (ms) depuis lequel un paiement est attendu (0 = aucun) et indicateur « attente échue sans paiement ». */
+    fun attenteDepuis(c: Context) = p(c).getLong("attente_depuis", 0L)
+    fun attenteDepuis(c: Context, v: Long) = p(c).edit().putLong("attente_depuis", v).apply()
+    fun attenteEchue(c: Context) = p(c).getBoolean("attente_echue", false)
+    fun attenteEchue(c: Context, v: Boolean) = p(c).edit().putBoolean("attente_echue", v).apply()
+
     /** Interrupteur général. */
     fun actif(c: Context) = p(c).getBoolean("actif", true)
     fun actif(c: Context, v: Boolean) = p(c).edit().putBoolean("actif", v).apply()

@@ -54,3 +54,17 @@ Application personnelle pour se concentrer : pendant des **plages horaires** (pa
 
 ## Compiler
 Ouvrir le dossier dans Android Studio, ou `gradle assembleDebug`. Tests : `gradle testDebugUnitTest` (logique des plages).
+
+
+## Vérifier auprès de l'opérateur (version 1.21)
+
+Cas visé : un paiement est reçu **sans aucun SMS** de l'opérateur. Dans l'onglet **Paiements**, la section « Vérifier auprès de l'opérateur » propose :
+- **J'attends un paiement** : un appui ; si rien n'est arrivé dans la base 30 minutes plus tard, une notification « Paiement attendu non reçu » prévient l'utilisateur ;
+- **Vérifier (une carte SIM, un bouton)** : envoie le code USSD du *mini relevé*, lit la réponse, et propose d'**ajouter à la base** les opérations « reçues sans SMS » ;
+- le texte brut de la réponse de l'opérateur est toujours affiché (rien n'est caché si la mise en forme n'est pas comprise).
+
+**Les codes ne sont pas dans l'application** : ils viennent de la base centrale d'**auRor** (Carnet USSD, adresse publique `/api/android/ussd-codes`), avec **copie locale** (utilisable sans Internet) et mise à jour automatique (ETag). Si un opérateur change son menu, on corrige le code dans auRor.
+Il faut y ajouter, pour chaque opérateur, un code d'usage « Mini relevé des dernières opérations » (et, si voulu, « Renvoi de la notification »). Si le code demande le code secret, écrire le mot `PIN` à sa place (ex. `*123*4*PIN#`) : il est saisi à chaque envoi et jamais conservé.
+
+Prudence vis-à-vis de l'opérateur : jamais d'envoi automatique, 4 vérifications au plus par 24 h, 10 minutes minimum entre deux.
+Limite connue : un seul échange USSD est possible (pas de navigation dans un menu) : le code doit être une séquence complète.
