@@ -147,8 +147,12 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
             }, fontSize = 11.sp, color = Color(0xFF64748B))
 
         // Bouton « Actualiser les codes » : relit les codes d'auRor à la demande (sans quitter ni relancer Concentration)
-        OutlinedButton({ actualiserCodes(true) }, enabled = !actualisation, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-            Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(8.dp)); Text(if (actualisation) "Lecture des codes d'auRor…" else "Actualiser les codes d'auRor")
+        // Pictogramme seul : relit les codes d'auRor ; l'état de la lecture reste écrit à côté
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+            FilledTonalIconButton({ actualiserCodes(true) }, enabled = !actualisation) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Actualiser les codes d'auRor")
+            }
+            Text(if (actualisation) "Lecture des codes d'auRor…" else "Actualiser les codes d'auRor", fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(start = 8.dp))
         }
         messageCodes?.let { Text(it, fontSize = 12.sp, color = BleuNuit, modifier = Modifier.padding(top = 4.dp)) }
 
