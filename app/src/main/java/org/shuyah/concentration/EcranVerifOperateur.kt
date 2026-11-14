@@ -39,6 +39,7 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
     var attenteEchue by remember { mutableStateOf(Reglages.attenteEchue(c)) }
     var enCours by remember { mutableStateOf(false) }
     var reponse by remember { mutableStateOf<String?>(null) }
+    var codeEnvoye by remember { mutableStateOf("") }                                          // dernier code envoyé, SANS le code secret (le mot PIN reste écrit tel quel)
     var absents by remember { mutableStateOf<List<Paiements.Paiement>>(emptyList()) }
     var cible by remember { mutableStateOf<Pair<Reseau.CarteSim, CodesUssd.Code>?>(null) }     // vérification en attente du code secret
     var pin by remember { mutableStateOf("") }
@@ -66,7 +67,7 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
 
     /** Envoie le code (avec le code secret si besoin) puis range la réponse et les opérations absentes de la base. */
     fun envoyer(carte: Reseau.CarteSim, code: CodesUssd.Code, codeSecret: String?) {
-        enCours = true; reponse = null; absents = emptyList()
+        enCours = true; reponse = null; absents = emptyList(); codeEnvoye = code.code     // le code de la base d'auRor : le mot PIN n'est jamais remplacé à l'écran
         VerifOperateur.lancer(c, carte, code, codeSecret) { r ->
             enCours = false
             reponse = r.texte ?: r.erreur
@@ -113,12 +114,12 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
                 Text("${carte.operateur} : aucun code « mini relevé » dans auRor" + if (copie == null) " (Internet n'a jamais répondu : connectez-vous une fois)." else " (à ajouter dans auRor → Codes USSD, puis appuyez sur « Actualiser les codes d'auRor »).", fontSize = 12.sp, color = Rouge, modifier = Modifier.padding(top = 4.dp))
             } else {
                 Button({ if (releve.demandePin) { pin = ""; cible = carte to releve } else envoyer(carte, releve, null) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    Icon(Icons.Filled.FactCheck, null); Spacer(Modifier.width(8.dp)); Text("Vérifier ${carte.operateur} : ${releve.titre}")
+                    Icon(Icons.Filled.FactCheck, null); Spacer(Modifier.width(8.dp)); Column { Text("Vérifier ${carte.operateur} : ${releve.titre}"); Text(releve.code, fontSize = 11.sp) }
                 }
             }
             if (notif != null) {
                 OutlinedButton({ if (notif.demandePin) { pin = ""; cible = carte to notif } else envoyer(carte, notif, null) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    Icon(Icons.Filled.Sms, null); Spacer(Modifier.width(8.dp)); Text("${carte.operateur} : ${notif.titre}")
+                    Icon(Icons.Filled.Sms, null); Spacer(Modifier.width(8.dp)); Column { Text("${carte.operateur} : ${notif.titre}"); Text(notif.code, fontSize = 11.sp) }
                 }
             }
         }
@@ -141,7 +142,8 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
         if (enCours) { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp)); Text("En attente de l'opérateur…", fontSize = 12.sp, color = BleuNuit) }
         reponse?.let {
             Column(Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF1F5F9)).padding(10.dp)) {
-                Text("Réponse de l'opérateur", fontSize = 12.sp, color = Bleu)
+                Text("Code (sans le code secret) : $codeEnvoye", fontSize = 12.sp, color = BleuNuit)
+                Text("Réponse de l'opérateur", fontSize = 12.sp, color = Bleu, modifier = Modifier.padding(top = 4.dp))
                 Text(it, fontSize = 13.sp, color = BleuNuit)
             }
             if (absents.isNotEmpty()) {
