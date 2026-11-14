@@ -25,7 +25,8 @@ object Consommation {
     /**
      * MESURES ABERRANTES : quand la connexion de la carte SIM est coupée (passage en Wi-Fi), l'opérateur répond parfois « 0 Mo » : le volume paraît s'effondrer, puis
      * « remonter » à la vérification suivante (fausse consommation de plusieurs Go, puis fausse recharge). Une telle mesure est un CREUX ISOLÉ et n'est pas une consommation :
-     *  - le volume tombe à moins de 10 % du dernier bon relevé (qui dépasse 500 Mo) en moins d'une heure — impossible à vitesse réelle : 6 Go en 2 minutes ;
+     *  - le volume perd plus de la MOITIÉ du dernier bon relevé (au moins 1 Go, et plus de 15 Go à l'heure : 6,7 Go en 3 minutes est impossible à vitesse réelle) ;
+     *    le creux n'est pas forcément à zéro : dans l'historique réel il restait 1,0 à 1,5 Go sur 7,8 Go ;
      *  - ET il remonte ensuite à au moins 80 % du dernier bon relevé.
      * Les mesures du creux (une ou plusieurs) sont ignorées. Un volume réellement épuisé (qui ne remonte pas, ou qui baisse peu à peu) est conservé.
      */
@@ -42,7 +43,7 @@ object Consommation {
             val bon = sortie.lastOrNull(); val m = l[i]
             if (bon != null && chuteImpossible(bon.restantMo, m.restantMo, m.ms - bon.ms)) {
                 var j = i
-                while (j < l.size && l[j].restantMo < bon.restantMo * SEUIL_CREUX) j++              // fin du creux : première mesure qui n'est plus « à zéro »
+                while (j < l.size && l[j].restantMo < bon.restantMo * SEUIL_CREUX) j++              // fin du creux : première mesure qui n'est plus « effondrée »
                 val suite = l.getOrNull(j)
                 if (suite != null && suite.restantMo >= bon.restantMo * 0.8) { i = j; continue }  // le volume est revenu : creux isolé, ignoré
             }
@@ -51,14 +52,21 @@ object Consommation {
         return sortie
     }
 
-    private const val SEUIL_CREUX = 0.1
+    private const val SEUIL_CREUX = 0.5                 // creux = moins de la moitié du dernier bon relevé
+    private const val VITESSE_MAX_MO_PAR_HEURE = 15_000.0   // au-delà de 15 Go à l'heure, une baisse n'est pas une consommation
 
     /**
-     * Vrai si un nouveau relevé est une CHUTE IMPOSSIBLE par rapport au précédent : plus de 90 % d'un volume d'au moins 500 Mo disparus en moins d'une heure.
+     * Vrai si un nouveau relevé est une CHUTE IMPOSSIBLE par rapport au précédent : un volume d'au moins 1 Go perd plus de la moitié (au moins 500 Mo) en moins d'une heure,
+     * à une vitesse supérieure à 15 Go par heure (durée comptée pour une minute au moins). Une vraie consommation, même très forte, n'atteint pas ce rythme.
      * Sert aussi à ne pas enregistrer ni signaler un tel relevé au moment de la lecture (voir Reseau.traiterReponse).
      */
-    fun chuteImpossible(avantMo: Double?, restantMo: Double, dureeMs: Long): Boolean =
-        avantMo != null && avantMo >= 500.0 && restantMo < avantMo * SEUIL_CREUX && dureeMs in 0..3_600_000L
+    fun chuteImpossible(avantMo: Double?, restantMo: Double, dureeMs: Long): Boolean {
+        if (avantMo == null || avantMo < 1000.0 || dureeMs !in 0..3_600_000L) return false
+        val perte = avantMo - restantMo
+        if (perte < 500.0 || restantMo >= avantMo * SEUIL_CREUX) return false
+        val heures = maxOf(dureeMs, 60_000L) / 3_600_000.0
+        return perte / heures > VITESSE_MAX_MO_PAR_HEURE
+    }
 
     /** Intervalles entre mesures consécutives, par carte SIM (les mesures peuvent arriver dans le désordre). Deux mesures au même instant sont ignorées. */
     fun intervalles(mesuresBrutes: List<Mesure>): List<Intervalle> =

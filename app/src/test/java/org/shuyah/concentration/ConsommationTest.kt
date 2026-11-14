@@ -68,6 +68,16 @@ class MesuresAberrantesTest {
         assertEquals(3, Consommation.mesuresFiables(liste).size)
     }
 
+    @Test fun creuxAUnGoPasAZero() {
+        // Historique réel du propriétaire : 7,9 Go → 1,2 Go en 3 minutes → 7,8 Go ; puis 6,8 Go → 1,0 Go en 2 minutes → 7,8 Go (les creux ne sont PAS à zéro)
+        val liste = listOf(m(10, 0, 8000.0), m(10, 9, 7900.0), m(10, 12, 1200.0), m(10, 22, 7800.0), m(10, 26, 7790.0),
+            m(17, 14, 7850.0), m(17, 16, 1000.0), m(18, 14, 7800.0))
+        assertEquals(2, Consommation.nombreIgnorees(liste))
+        val i = Consommation.intervalles(liste)
+        assertTrue(i.none { it.consoMo > 1000.0 })                                 // plus de fausse consommation de 6 Go
+        assertTrue(i.none { it.recharge })                                         // ni de fausse recharge
+    }
+
     @Test fun volumeReellementEpuiseConserve() {
         // Le volume tombe à zéro et NE remonte PAS : épuisement réel, rien n'est ignoré
         val liste = listOf(m(10, 0, 800.0), m(10, 30, 0.0), m(11, 0, 0.0))
@@ -86,5 +96,8 @@ class MesuresAberrantesTest {
         assertFalse(Consommation.chuteImpossible(6800.0, 5000.0, 60_000L))          // baisse normale
         assertFalse(Consommation.chuteImpossible(null, 0.0, 60_000L))               // premier relevé
         assertFalse(Consommation.chuteImpossible(300.0, 0.0, 60_000L))              // petit volume : on ne présume rien
+        assertTrue(Consommation.chuteImpossible(7900.0, 1200.0, 180_000L))          // 7,9 Go → 1,2 Go en 3 minutes (cas réel) : aberrant
+        assertFalse(Consommation.chuteImpossible(7900.0, 3000.0, 6 * 3_600_000L))   // forte consommation sur 6 h : possible
+        assertFalse(Consommation.chuteImpossible(9000.0, 4000.0, 3_600_000L))       // 5 Go en 1 h : très forte mais possible
     }
 }

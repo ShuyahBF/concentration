@@ -90,3 +90,10 @@ Quand la connexion de la carte SIM est coupée (passage en Wi-Fi), l'opérateur 
 `gradle -Pcompact=true assembleSmsRelease` (ou `assembleStandardRelease`) produit un APK **réduit par R8** : environ **1,4 Mo au lieu de 16 Mo** (code et icônes inutilisés retirés). Il est signé avec la clé de debug, donc il **s'installe par-dessus** les versions de test déjà installées.
 Utile quand le téléchargement du gros fichier échoue ou dépasse une limite d'envoi (Google Drive : 10 Mo). Par défaut (sans `-Pcompact=true`) les compilations ne changent pas.
 Limite : la réduction du code peut, en théorie, retirer une classe appelée seulement par réflexion ; si un écran se comporte autrement qu'avec la version normale, revenir à celle-ci et le signaler.
+
+### Version 1.27 : creux aberrants corrigés d'après les vraies valeurs, bouton « Actualiser »
+
+- Les creux de l'historique réel ne descendaient **pas à zéro** : le volume passait de 7,8 Go à environ 1,0 à 1,5 Go en 2 à 3 minutes, puis revenait à 7,8 Go. La règle 1.26 (moins de 10 %) ne les voyait pas.
+  Nouvelle règle : une baisse de plus de la **moitié** du dernier bon relevé (au moins 1 Go) à plus de **15 Go à l'heure** (impossible en vraie consommation), suivie d'un retour à au moins 80 %, est ignorée. Test sur le cas réel.
+- Onglet **Consommation** : bouton **Actualiser** (pictogramme) qui relit toutes les mesures et refait graphique, totaux et liste, avec un toast « en cours » puis un toast de résultat (nombre de mesures, creux ignorés).
+  Même principe sur « Actualiser » (Paiements) et « Actualiser les codes d'auRor » (règle 17 du fichier CLAUDE.md : toute actualisation annonce son opération par un toast).
