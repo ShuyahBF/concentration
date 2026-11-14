@@ -45,7 +45,9 @@ internal fun OngletConsommation(cartes: List<Reseau.CarteSim>, tickLecture: Int,
     val emplacements = mesuresToutes.map { it.emplacement }.distinct().sorted()
     var choisi by remember { mutableIntStateOf(-1) }
     val slot = if (choisi in emplacements) choisi else (cartes.firstOrNull { it.donnees && it.emplacement in emplacements }?.emplacement ?: emplacements.firstOrNull() ?: 0)
-    val mesures = mesuresToutes.filter { it.emplacement == slot }
+    val mesuresBrutes = mesuresToutes.filter { it.emplacement == slot }
+    val mesures = Consommation.mesuresFiables(mesuresBrutes)                      // creux isolés (connexion SIM coupée) écartés
+    val ignorees = mesuresBrutes.size - mesures.size
     val intervalles = Consommation.intervalles(mesures)
     val parJour = Consommation.parJour(intervalles)
     val moyenne = Consommation.moyenneParJour(intervalles)
@@ -83,9 +85,12 @@ internal fun OngletConsommation(cartes: List<Reseau.CarteSim>, tickLecture: Int,
             intervalles.takeLast(12).reversed().forEach { i ->
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
                     Text("${dateHeure(i.debutMs)} → ${dateHeure(i.finMs)}", Modifier.weight(1f), fontSize = 12.sp, color = Color(0xFF475569))
-                    Text(if (i.recharge) "recharge" else "−" + Solde.formater(i.consoMo), fontSize = 12.sp, color = if (i.recharge) Vert else BleuNuit, textAlign = TextAlign.End)
+                    // Une consommation est toujours positive : « 95 Mo » consommés (jamais « −95 Mo ») ; « recharge » en vert
+                    Text(if (i.recharge) "recharge" else Solde.formater(i.consoMo), fontSize = 12.sp, color = if (i.recharge) Vert else BleuNuit, textAlign = TextAlign.End)
                 }
             }
+            if (ignorees > 0) Text("ℹ $ignorees mesure(s) ignorée(s) : volume tombé à zéro puis revenu (connexion de la carte SIM coupée, par exemple en Wi-Fi). Elles ne comptent pas comme consommation.",
+                fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 8.dp))
             Text("Estimation : la consommation réelle entre deux vérifications peut varier ; plus les vérifications sont rapprochées, plus elle est précise.",
                 fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 8.dp))
         }

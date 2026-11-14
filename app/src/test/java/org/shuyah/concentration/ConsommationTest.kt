@@ -45,3 +45,46 @@ class ConsommationTest {
         assertTrue(Consommation.intervalles(listOf(Consommation.Mesure(0, ms(10, 8), 1.0))).isEmpty())
     }
 }
+
+/** Mesures aberrantes : connexion de la carte SIM coupée (Wi-Fi) → « 0 Mo » puis retour du volume. Données de l'historique réel simplifiées. */
+class MesuresAberrantesTest {
+    private val utc = TimeZone.getTimeZone("UTC")
+    private fun ms(jour: Int, h: Int, min: Int = 0) = Calendar.getInstance(utc).apply { clear(); set(2026, Calendar.NOVEMBER, jour, h, min) }.timeInMillis
+    private fun m(h: Int, min: Int, mo: Double) = Consommation.Mesure(0, ms(14, h, min), mo)
+
+    @Test fun creuxIsoleIgnore() {
+        // 6,8 Go → 0 Mo en 2 minutes → 7,8 Go : ni consommation de 6,8 Go, ni fausse recharge
+        val liste = listOf(m(17, 10, 6900.0), m(17, 14, 6800.0), m(17, 16, 0.0), m(18, 14, 7800.0))
+        assertEquals(1, Consommation.nombreIgnorees(liste))
+        val i = Consommation.intervalles(liste)
+        assertEquals(2, i.size)
+        assertTrue(i.none { it.consoMo > 500.0 })                                  // plus de fausse consommation de plusieurs Go
+        assertTrue(i.none { it.recharge } || i.all { it.consoMo < 500.0 })
+    }
+
+    @Test fun plusieursMesuresACeroDeSuite() {
+        val liste = listOf(m(10, 0, 6700.0), m(10, 9, 6700.0), m(10, 12, 0.0), m(10, 15, 0.0), m(10, 22, 6650.0))
+        assertEquals(2, Consommation.nombreIgnorees(liste))
+        assertEquals(3, Consommation.mesuresFiables(liste).size)
+    }
+
+    @Test fun volumeReellementEpuiseConserve() {
+        // Le volume tombe à zéro et NE remonte PAS : épuisement réel, rien n'est ignoré
+        val liste = listOf(m(10, 0, 800.0), m(10, 30, 0.0), m(11, 0, 0.0))
+        assertEquals(0, Consommation.nombreIgnorees(liste))
+    }
+
+    @Test fun baisseProgressiveConservee() {
+        // Consommation normale, même importante : rien n'est ignoré
+        val liste = listOf(m(8, 0, 11000.0), m(9, 0, 9000.0), m(10, 0, 4000.0), m(11, 0, 500.0))
+        assertEquals(0, Consommation.nombreIgnorees(liste))
+    }
+
+    @Test fun relevesAberrantsALaLecture() {
+        assertTrue(Consommation.chuteImpossible(6800.0, 0.0, 120_000L))             // 6,8 Go → 0 en 2 minutes : jamais enregistré
+        assertFalse(Consommation.chuteImpossible(6800.0, 0.0, 5 * 3_600_000L))     // 5 h plus tard : possible (forfait épuisé)
+        assertFalse(Consommation.chuteImpossible(6800.0, 5000.0, 60_000L))          // baisse normale
+        assertFalse(Consommation.chuteImpossible(null, 0.0, 60_000L))               // premier relevé
+        assertFalse(Consommation.chuteImpossible(300.0, 0.0, 60_000L))              // petit volume : on ne présume rien
+    }
+}
