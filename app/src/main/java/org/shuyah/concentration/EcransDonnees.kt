@@ -61,14 +61,14 @@ internal fun OngletConsommation(cartes: List<Reseau.CarteSim>, tickLecture: Int,
     }
 
     Section("Consommation d'Internet", Icons.Filled.Info) {
-        // Bouton « Actualiser » : relit toutes les mesures et refait le graphique, les totaux et la liste (règle : toute correction qui change des résultats a son bouton)
-        OutlinedButton({ Avis.enCours(c, "Actualisation de la consommation en cours…"); actualisations++ }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(8.dp)); Text("Actualiser")
-        }
-        Spacer(Modifier.height(8.dp))
         // Choix de la période (liste finie : trois boutons à choix exclusif)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(7, 30, 90).forEach { j -> FilterChip(selected = jours == j, onClick = { jours = j }, label = { Text("$j jours") }) }
+            // Pictogramme seul « Actualiser » (règle pictogrammes : économise la place ; l'info-bulle vocale est donnée par contentDescription) :
+            // relit toutes les mesures et refait le graphique, les totaux et la liste
+            FilledTonalIconButton({ Avis.enCours(c, "Actualisation de la consommation en cours…"); actualisations++ }) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Actualiser la consommation")
+            }
         }
         // Choix de la carte SIM quand il y en a plusieurs avec des mesures
         if (emplacements.size > 1) Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

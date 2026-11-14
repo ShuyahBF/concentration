@@ -180,7 +180,7 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         OutlinedTextField(recherche, { recherche = it; filtre = filtre.copy(q = it); affiches = TAILLE_PAGE }, label = { Text("Bénéficiaire, numéro de transaction, texte du SMS") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ Avis.enCours(c, "Actualisation des paiements en cours…"); version++; Avis.resultat(c, "Paiements actualisés : ${Historique.de(c).nombrePaiements()} enregistré(s).") }) { Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(4.dp)); Text("Actualiser") }
+            FilledTonalIconButton({ Avis.enCours(c, "Actualisation des paiements en cours…"); version++; Avis.resultat(c, "Paiements actualisés : ${Historique.de(c).nombrePaiements()} enregistré(s).") }) { Icon(Icons.Filled.Refresh, contentDescription = "Actualiser les paiements") }
             if (filtreActif) OutlinedButton({ filtre = StatsPaiements.Filtre(periode = "tout"); recherche = ""; barreChoisie = null; affiches = TAILLE_PAGE }) { Icon(Icons.Filled.RestartAlt, null); Spacer(Modifier.width(4.dp)); Text("Réinitialiser") }
         }
     }
