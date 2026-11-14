@@ -39,6 +39,7 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
     var attenteEchue by remember { mutableStateOf(Reglages.attenteEchue(c)) }
     var enCours by remember { mutableStateOf(false) }
     var reponse by remember { mutableStateOf<String?>(null) }
+    var reponseEnErreur by remember { mutableStateOf(false) }                                  // la réponse affichée est un échec (pas un texte de l'opérateur)
     var codeEnvoye by remember { mutableStateOf("") }                                          // dernier code envoyé, SANS le code secret (le mot PIN reste écrit tel quel)
     var absents by remember { mutableStateOf<List<Paiements.Paiement>>(emptyList()) }
     var cible by remember { mutableStateOf<Pair<Reseau.CarteSim, CodesUssd.Code>?>(null) }     // vérification en attente du code secret
@@ -70,7 +71,7 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
         enCours = true; reponse = null; absents = emptyList(); codeEnvoye = code.code     // le code de la base d'auRor : le mot PIN n'est jamais remplacé à l'écran
         VerifOperateur.lancer(c, carte, code, codeSecret) { r ->
             enCours = false
-            reponse = r.texte ?: r.erreur
+            reponse = r.texte ?: r.erreur; reponseEnErreur = r.texte == null
             if (r.texte != null && code.usage == CodesUssd.USAGE_RELEVE) {
                 val maintenantMs = System.currentTimeMillis()
                 absents = VerifOperateur.absents(VerifOperateur.analyserReleve(r.texte, maintenantMs), Historique.de(c).tousPaiements(), maintenantMs)
@@ -146,6 +147,13 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
                 Text("Réponse de l'opérateur", fontSize = 12.sp, color = Bleu, modifier = Modifier.padding(top = 4.dp))
                 Text(it, fontSize = 13.sp, color = BleuNuit)
             }
+            // Échec de l'envoi automatique (menu qui exige le composeur, code refusé…) : on propose d'ouvrir le même code dans le composeur du téléphone,
+            // où le menu de l'opérateur s'affiche normalement. Impossible si le code contient le mot PIN (il apparaîtrait en clair dans le composeur).
+            if (reponseEnErreur && codeEnvoye.isNotBlank() && !codeEnvoye.contains("PIN", ignoreCase = true) && !codeEnvoye.contains("*PIN")) {
+                OutlinedButton({
+                    try { c.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + android.net.Uri.encode(codeEnvoye)))) } catch (e: Exception) { }
+                }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Icon(Icons.Filled.Phone, null); Spacer(Modifier.width(8.dp)); Text("Ouvrir ce code dans le composeur") }
+            }
             if (absents.isNotEmpty()) {
                 Text("${absents.size} opération(s) du relevé absente(s) de votre base (reçues sans SMS) :", fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(top = 10.dp))
                 absents.forEach { p ->
@@ -158,7 +166,7 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
                         surChangement(); EnvoiSawali.envoyerEnArrierePlan(c)
                     }
                 }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) { Icon(Icons.Filled.AddCircle, null); Spacer(Modifier.width(8.dp)); Text("Ajouter à ma base") }
-            } else if (cible == null && !enCours) {
+            } else if (cible == null && !enCours && !reponseEnErreur) {
                 Text("Aucune opération absente reconnue dans cette réponse. Si une opération manque, comparez avec le texte ci-dessus : sa mise en forme n'est peut-être pas encore comprise.", fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 6.dp))
             }
         }
