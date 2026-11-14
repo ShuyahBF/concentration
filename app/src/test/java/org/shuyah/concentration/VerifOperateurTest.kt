@@ -57,3 +57,20 @@ class VerifOperateurTest {
     }
 }
 
+
+/** Lecture de la liste « dernières opérations » du menu de l'opérateur (numéros de transaction FICTIFS). */
+class ListeOperationsTest {
+    @Test fun numerosDuMenu() {
+        val menu = "Selectionner le type de transaction pour renvoyer la notification:\n1. MP261113.1339.11111111\n2. MP261113.1201.22222222\n3.\nn Suivant"
+        val refs = VerifOperateur.referencesDuTexte(menu)
+        assertEquals(listOf("MP261113.1339.11111111", "MP261113.1201.22222222"), refs)
+        assertTrue(VerifOperateur.referencesDuTexte("aucun numéro ici, 2500 FCFA").isEmpty())
+        // un numéro répété n'est compté qu'une fois
+        assertEquals(1, VerifOperateur.referencesDuTexte("MP261113.1339.11111111 puis MP261113.1339.11111111").size)
+    }
+
+    @Test fun numerosAbsentsDeLaBase() {
+        val base = listOf(Paiements.Paiement("OM", 1L, "RECETTE", 5000L, "", null, "x", "MP261113.1339.11111111"))
+        assertEquals(listOf("MP261113.1201.22222222"), VerifOperateur.referencesAbsentes(listOf("MP261113.1339.11111111", "MP261113.1201.22222222"), base))
+    }
+}

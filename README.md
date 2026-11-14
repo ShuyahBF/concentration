@@ -68,3 +68,12 @@ Il faut y ajouter, pour chaque opérateur, un code d'usage « Mini relevé des d
 
 Prudence vis-à-vis de l'opérateur : jamais d'envoi automatique, 4 vérifications au plus par 24 h, 10 minutes minimum entre deux.
 Limite connue : un seul échange USSD est possible (pas de navigation dans un menu) : le code doit être une séquence complète.
+
+### Lecture de la liste « dernières opérations » (version 1.25)
+
+Le menu « renvoi de notification » d'Orange (ex. `*400*9*6#`) affiche, **sans code secret**, la liste des dernières opérations (numéros de transaction). Android ne rend pas ce type de menu à une application :
+Concentration ouvre donc le code dans le composeur et **lit la fenêtre « Infos de l'opérateur »** avec son service d'accessibilité (à activer une fois : Paramètres → Accessibilité → Concentration). Les numéros absents de la base signalent un paiement reçu sans SMS (date et heure lues dans le numéro).
+
+Garde-fous : lecture **seulement pendant 2 minutes** après l'appui sur « Lire la liste des dernières opérations » ; seulement la fenêtre du téléphone / de l'opérateur ; **seuls les numéros de transaction sont retenus**, le reste du texte est oublié aussitôt ; Concentration ne saisit rien et ne touche jamais au code secret.
+Le service d'accessibilité était auparavant limité au nom de l'application affichée (`canRetrieveWindowContent` à faux) : il peut désormais lire le contenu de la fenêtre active, mais le code ne le fait que dans les conditions ci-dessus.
+Pour obtenir le SMS d'une opération (montant, nom) : choisir son numéro dans le menu (le code secret est demandé par l'opérateur) ; le SMS reçu est lu comme les autres.

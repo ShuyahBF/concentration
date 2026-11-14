@@ -118,10 +118,22 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
                     Icon(Icons.Filled.FactCheck, null); Spacer(Modifier.width(8.dp)); Column { Text("Vérifier ${carte.operateur} : ${releve.titre}"); Text(releve.code, fontSize = 11.sp) }
                 }
             }
-            if (notif != null) {
-                OutlinedButton({ if (notif.demandePin) { pin = ""; cible = carte to notif } else envoyer(carte, notif, null) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+            if (notif != null && notif.demandePin) {
+                // Code complet avec le code secret (ex. renvoi du SMS d'une opération) : envoi direct, code secret saisi masqué
+                OutlinedButton({ pin = ""; cible = carte to notif }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Icon(Icons.Filled.Sms, null); Spacer(Modifier.width(8.dp)); Column { Text("${carte.operateur} : ${notif.titre}"); Text(notif.code, fontSize = 11.sp) }
                 }
+            } else if (notif != null) {
+                // Menu « dernières opérations » (sans code secret) : Android ne le rend pas à une application ; on l'ouvre dans le composeur et Concentration LIT la fenêtre
+                OutlinedButton({
+                    val maintenantMs = System.currentTimeMillis()
+                    val motif = VerifOperateur.refus(Reglages.horairesVerif(c), maintenantMs)
+                    if (motif != null) { reponse = motif; reponseEnErreur = true; codeEnvoye = notif.code }
+                    else { Reglages.horairesVerif(c, Reglages.horairesVerif(c).filter { maintenantMs - it in 0 until 86_400_000L } + maintenantMs); reponse = null; LectureMenu.demarrer(c, notif.code) }
+                }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    Icon(Icons.Filled.Sms, null); Spacer(Modifier.width(8.dp)); Column { Text("${carte.operateur} : Lire la liste des dernières opérations"); Text(notif.code, fontSize = 11.sp) }
+                }
+                if (!accessibiliteActive(c)) Autorisation("Service d'accessibilité « Concentration (verrou) » (pour lire la liste)", false) { c.startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
             }
         }
         Text("$restantes vérification(s) possible(s) aujourd'hui (au plus ${VerifOperateur.MAX_PAR_JOUR} par jour, pour ne pas solliciter l'opérateur à l'excès).", fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 6.dp))
@@ -138,6 +150,20 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
             Icon(Icons.Filled.Refresh, null); Spacer(Modifier.width(8.dp)); Text(if (actualisation) "Lecture des codes d'auRor…" else "Actualiser les codes d'auRor")
         }
         messageCodes?.let { Text(it, fontSize = 12.sp, color = BleuNuit, modifier = Modifier.padding(top = 4.dp)) }
+
+        // Dernière liste lue dans la fenêtre de l'opérateur : numéros de transaction absents de la base (paiements reçus sans SMS)
+        val refsLues = remember(maintenant) { Reglages.menuReferences(c) }
+        if (refsLues.isNotEmpty()) {
+            val absentesLues = remember(maintenant, refsLues) { VerifOperateur.referencesAbsentes(refsLues, Historique.de(c).tousPaiements()) }
+            Column(Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFF1F5F9)).padding(10.dp)) {
+                Text("Dernière liste lue à ${SimpleDateFormat("HH:mm", Locale.FRANCE).format(Reglages.menuLuLe(c))} : ${refsLues.size} opération(s), ${absentesLues.size} absente(s) de votre base", fontSize = 13.sp, color = BleuNuit)
+                absentesLues.forEach { ref ->
+                    val quand = Paiements.dateDeReference(ref)?.let { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).format(it) } ?: "date inconnue"
+                    Text("• $quand · $ref", fontSize = 12.sp, color = Orange)
+                }
+                if (absentesLues.isNotEmpty()) Text("Pour obtenir le SMS (montant et nom), choisissez le numéro dans le menu de l'opérateur : le code secret est demandé.", fontSize = 11.sp, color = Color(0xFF64748B), modifier = Modifier.padding(top = 4.dp))
+            }
+        }
 
         // 3. Réponse de l'opérateur et rapprochement avec la base
         if (enCours) { LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp)); Text("En attente de l'opérateur…", fontSize = 12.sp, color = BleuNuit) }

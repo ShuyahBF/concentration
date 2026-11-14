@@ -6,7 +6,8 @@ import android.view.accessibility.AccessibilityEvent
 
 /**
  * NIVEAU 2 : verrou des applications. Pendant la plage, quand une application bloquée passe au premier plan, on revient à l'écran d'accueil
- * et on affiche l'écran « Concentration ». Le service ne reçoit que le NOM de l'application affichée (aucun contenu d'écran).
+ * et on affiche l'écran « Concentration ». Le service ne reçoit que le NOM de l'application affichée ; SEULE EXCEPTION (v1.25) : pendant 2 minutes après l'appui sur « Lire la liste des dernières opérations », il lit la fenêtre de
+ * l'opérateur pour en retenir les numéros de transaction (voir LectureMenu).
  * Nécessite l'activation du service dans Paramètres → Accessibilité (à faire une fois).
  */
 class ServiceVerrou : AccessibilityService() {
@@ -16,6 +17,8 @@ class ServiceVerrou : AccessibilityService() {
     private var dernierControlePareFeu = 0L
 
     override fun onAccessibilityEvent(e: AccessibilityEvent?) {
+        // v1.25 : lecture de la fenêtre « Infos de l'opérateur », seulement pendant les 2 minutes qui suivent l'appui sur le bouton de Concentration
+        if (e != null && LectureMenu.attendu(this)) LectureMenu.depuisFenetre(this)
         if (e?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val paquet = e.packageName?.toString() ?: return
         // Contrôle du pare-feu (niveau 3) au plus une fois par minute

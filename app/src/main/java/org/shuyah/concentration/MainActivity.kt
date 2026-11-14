@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
 internal fun accesNotifications(c: Context) = Settings.Secure.getString(c.contentResolver, "enabled_notification_listeners")?.contains(c.packageName + "/") == true
 
 /** Vrai si le service d'accessibilité (verrou) est activé. */
-private fun accessibiliteActive(c: Context) = Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(c.packageName + "/") == true
+internal fun accessibiliteActive(c: Context) = Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)?.contains(c.packageName + "/") == true
 
 /** Vrai si Concentration est exclue de l'économie de batterie (« Aucune restriction » : le système ne l'arrête plus). */
 private fun batterieLibre(c: Context) = (c.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isIgnoringBatteryOptimizations(c.packageName)

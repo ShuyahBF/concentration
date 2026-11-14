@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Concentration</string>
-    <string name="description_verrou">Concentration : pendant les plages horaires choisies, ramène à l\'accueil les applications bloquées. Aucun contenu d\'écran n\'est lu.</string>
+    <string name="description_verrou">Concentration : pendant les plages horaires choisies, ramène à l\'accueil les applications bloquées. Seule exception : pendant 2 minutes après l\'appui sur « Lire la liste des dernières opérations », la fenêtre de l\'opérateur est lue pour en retenir les numéros de transaction ; rien d\'autre n\'est lu, rien n\'est saisi.</string>
 </resources>
