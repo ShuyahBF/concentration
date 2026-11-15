@@ -21,10 +21,12 @@ class PaiementsTest {
     }
 
     @Test fun lesSmsSansPaiementSontIgnores() {
-        assertNull(Paiements.analyser("ORANGE", "Gagnez 500000 FCFA avec notre jeu concours, cliquez ici", 1L))     // promotion
+        // Promotion : GARDÉE avec la catégorie PROMO, mais hors décompte
+        val promo = Paiements.analyser("ORANGE", "Gagnez 500000 FCFA avec notre jeu concours, cliquez ici", 1L)!!
+        assertEquals("PROMO", promo.categorie); assertFalse(promo.estTransaction)
         assertNull(Paiements.analyser("ORANGE", "Votre forfait internet expire le 15/11/2026", 1L))                 // pas de montant
         assertNull(Paiements.analyser("AMI", "Salut, on se voit à 18 h ?", 1L))
-        assertNull(Paiements.analyser("BANQUE", "Montant 5000 FCFA disponible", 1L))                                 // sens indéterminé
+        assertNull(Paiements.analyser("OPERATEUR", "Montant 5000 FCFA disponible", 1L))                              // sens indéterminé
     }
 
     @Test fun montantEtSoldeNeSeConfondentPas() {

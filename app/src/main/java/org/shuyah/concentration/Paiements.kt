@@ -6,13 +6,16 @@ import java.util.Locale
  * LECTURE DES SMS DE PAIEMENT (Orange Money, Moov Money, Telecel Money, banques…) : logique pure, sans Android (testée par PaiementsTest).
  *
  * Un SMS est retenu comme paiement quand il contient UN MONTANT en francs CFA ET un mot qui indique le sens de l'opération
- * (dépense : payé, achat, retrait, envoi, transfert, facture, débit ; recette : reçu, dépôt, crédit, versement). Les SMS promotionnels
- * (« gagnez », « promo », « offre »…), les alertes de banque, les messages de personnes (voir ClassificationSms) et ceux sans montant sont ignorés. Le texte des SMS d'opérateurs n'étant pas normalisé, la lecture est
+ * (dépense : payé, achat, retrait, envoi, transfert, facture, débit ; recette : reçu, dépôt, crédit, versement). Les SMS promotionnels,
+ * les alertes de banque et les messages de personnes (voir ClassificationSms) sont GARDÉS avec une pastille grise et ne sont pas comptés comme transactions ; ceux sans montant sont ignorés. Le texte des SMS d'opérateurs n'étant pas normalisé, la lecture est
  * volontairement prudente : en cas de doute le SMS est ignoré plutôt que mal classé.
  */
 object Paiements {
     /** Un paiement lu : sens (DEPENSE ou RECETTE), montant en FCFA, tiers, solde après opération, numéro de transaction (ex. MP261113.1339.95787510), identifiant en base (0 tant que non enregistré). */
-    data class Paiement(val adresse: String, val recuLeMs: Long, val genre: String, val montant: Long, val tiers: String, val soldeApres: Long?, val corps: String, val reference: String? = null, val id: Long = 0)
+    data class Paiement(val adresse: String, val recuLeMs: Long, val genre: String, val montant: Long, val tiers: String, val soldeApres: Long?, val corps: String, val reference: String? = null, val id: Long = 0, val categorie: String = "TRANSACTION") {
+        /** Vrai pour une vraie transaction du portefeuille mobile ; faux pour une promo, une alerte de banque ou un message de personne (gardés avec une pastille grise, hors décompte). */
+        val estTransaction: Boolean get() = categorie == "TRANSACTION"
+    }
 
     // Nombre : « 2,150.00 », « 15 000 », « 15.000 », « 6403.0202 », « 2500 » (voir `lireNombre` pour le sens des virgules et des points)
     private const val NOMBRE = "(?:\\d{1,3}(?:[ \\u00a0\\u202f]\\d{3})+|\\d+)(?:[.,]\\d+)*"
@@ -102,17 +105,21 @@ object Paiements {
     /** Analyse un SMS : le paiement qu'il contient, ou null (promotion, pas de montant, sens indéterminé). La date du numéro de transaction, si elle existe, remplace l'heure de réception. */
     fun analyser(adresse: String, corps: String, recuLeMs: Long): Paiement? {
         val t = corps.lowercase(Locale.ROOT)
-        if (MOTS_PROMO.any { t.contains(it) }) return null
         val montant = montantDe(corps) ?: return null
         // Recette testée d'abord : « vous avez reçu » contient des mots ambigus (ex. « envoi » dans un libellé) mais jamais l'inverse
-        val genre = when {
+        val genreTrouve = when {
             MOTS_RECETTE.any { t.contains(it) } -> "RECETTE"
             MOTS_DEPENSE.any { t.contains(it) } -> "DEPENSE"
-            else -> return null
+            else -> null
         }
         val reference = referenceDe(corps)
-        // Seul un SMS de TRANSACTION est gardé : promo, alerte de banque et message d'une personne sont ignorés (voir ClassificationSms)
-        if (ClassificationSms.categorie(adresse, corps, reference) != ClassificationSms.Categorie.TRANSACTION) return null
-        return Paiement(adresse, dateDeReference(reference) ?: recuLeMs, genre, montant, tiersDe(corps, genre), soldeDe(corps), corps.trim(), reference)
+        // Catégorie (voir ClassificationSms) : un SMS qui n'est pas une TRANSACTION (promo, alerte de banque, message de personne) est GARDÉ avec une pastille grise,
+        // mais ne compte jamais dans les totaux, les graphiques ni l'envoi à SAWALI. Les mots promotionnels explicites (« gagnez », « jeu concours »…) donnent aussi « promo ».
+        var categorie = ClassificationSms.categorie(adresse, corps, reference)
+        if (categorie == ClassificationSms.Categorie.TRANSACTION && MOTS_PROMO.any { t.contains(it) }) categorie = ClassificationSms.Categorie.PROMO
+        // Une vraie transaction dont le sens est indéterminé reste ignorée (prudence) ; un SMS hors décompte est gardé avec le sens « AUTRE »
+        if (categorie == ClassificationSms.Categorie.TRANSACTION && genreTrouve == null) return null
+        val genre = genreTrouve ?: "AUTRE"
+        return Paiement(adresse, dateDeReference(reference) ?: recuLeMs, genre, montant, tiersDe(corps, genre), soldeDe(corps), corps.trim(), reference, 0, categorie.name)
     }
 }
