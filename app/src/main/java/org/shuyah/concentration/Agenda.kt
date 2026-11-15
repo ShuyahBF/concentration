@@ -12,9 +12,10 @@ import java.util.concurrent.TimeUnit
  * AGENDA GOOGLE dans Concentration (version 1.32) : le propriétaire du téléphone lie SON agenda, voit ses prochains rendez-vous et en crée,
  * y compris par note vocale (« samedi 8h15 rdv chez le dentiste »).
  *
- * Pour un développeur WinDev : Concentration ne parle JAMAIS à Google. Il appelle la passerelle « Agenda » de SAWALI (lot 403) avec l'identifiant
- * et la clé du téléphone (X-Source / X-Cle, les mêmes que pour l'envoi des paiements) : SAWALI sait ainsi de QUEL téléphone vient la demande et ne
- * donne accès qu'à l'agenda lié à CE téléphone. Aucun jeton Google n'est stocké sur le téléphone.
+ * Pour un développeur WinDev : Concentration ne parle JAMAIS à Google. Il appelle la passerelle « Agenda » de SAWALI (lot 403) avec un identifiant et une clé
+ * d'appareil que l'application GÉNÈRE ELLE-MÊME au premier usage (X-Appareil / X-Cle-Appareil) : rien à saisir, aucun téléphone source à créer. SAWALI enregistre l'appareil
+ * à la « demande d'accès » (compte Google déclaré + nom de l'appareil) et ne donne accès qu'à l'agenda lié à CET appareil, une fois la demande acceptée par l'administrateur.
+ * Aucun jeton Google n'est stocké sur le téléphone.
  *
  * Étapes : 1) « demander » l'accès avec son compte Google ; 2) l'administrateur de SAWALI l'accepte ; 3) « lier » (page Google, une seule fois) ;
  * 4) consulter, analyser une note, créer (après relecture et confirmation), supprimer.
@@ -38,7 +39,7 @@ object Agenda {
     data class Proposition(val titre: String, val debut: String, val libelle: String, val manque: List<String>, val duree: Int)
 
     fun messageHttp(code: Int) = when (code) {
-        401 -> "identifiant ou clé du téléphone refusés par SAWALI : vérifiez les réglages « Envoi à SAWALI »"
+        401 -> "appareil refusé par SAWALI : désinstallez puis réinstallez Concentration, ou contactez l'administrateur"
         403 -> "accès à l'agenda pas encore accepté par l'administrateur"
         409 -> "agenda non lié : reliez votre compte Google"
         in 500..599 -> "serveur SAWALI momentanément indisponible"
@@ -46,7 +47,20 @@ object Agenda {
     }
 
     // ---- Corps JSON (logique pure, testée) ----
-    fun corpsDemande(gmail: String) = "{\"gmail\":\"${EnvoiSawali.echapper(gmail.trim())}\"}"
+    fun corpsDemande(gmail: String, nomAppareil: String = "") =
+        "{\"gmail\":\"${EnvoiSawali.echapper(gmail.trim())}\",\"nom\":\"${EnvoiSawali.echapper(nomAppareil.trim().take(80))}\"}"
+
+    /** Identifiant (24 caractères) et clé (32 caractères) aléatoires, lettres et chiffres : générés une seule fois, gardés dans les préférences privées de l'application. */
+    fun aleatoire(longueur: Int): String {
+        val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"; val hasard = java.security.SecureRandom()
+        return (1..longueur).map { alphabet[hasard.nextInt(alphabet.length)] }.joinToString("")
+    }
+    private fun appareil(c: Context): Pair<String, String> {
+        val p = c.getSharedPreferences("agenda_appareil", Context.MODE_PRIVATE)
+        var id = p.getString("id", null); var cle = p.getString("cle", null)
+        if (id == null || cle == null) { id = aleatoire(24); cle = aleatoire(32); p.edit().putString("id", id).putString("cle", cle).apply() }
+        return Pair(id, cle)
+    }
     fun corpsAnalyse(texte: String) = "{\"texte\":\"${EnvoiSawali.echapper(texte.trim().take(500))}\"}"
     fun corpsCreation(titre: String, debut: String, fin: String) =
         "{\"titre\":\"${EnvoiSawali.echapper(titre.trim().take(200))}\",\"debut\":\"${EnvoiSawali.echapper(debut)}\",\"fin\":\"${EnvoiSawali.echapper(fin)}\"}"
@@ -75,10 +89,9 @@ object Agenda {
 
     // ---- Réseau (bloquant : à appeler hors de l'écran) ----
     fun appeler(c: Context, chemin: String, corps: String = "{}"): Reponse {
-        val source = Reglages.sawaliSource(c); val cle = Reglages.sawaliCle(c)
-        if (!EnvoiSawali.configure(source, cle)) return Reponse(401, "{\"detail\":\"Réglez d'abord l'identifiant et la clé du téléphone (onglet Paiements → Envoi à SAWALI).\"}")
+        val (id, cle) = appareil(c)
         return try {
-            val requete = Request.Builder().url(EnvoiSawali.adresse(Reglages.sawaliUrl(c)) + "/api/webhook/agenda/" + chemin).header("X-Source", source).header("X-Cle", cle)
+            val requete = Request.Builder().url(EnvoiSawali.adresse(Reglages.sawaliUrl(c)) + "/api/webhook/agenda/" + chemin).header("X-Appareil", id).header("X-Cle-Appareil", cle)
                 .post(corps.toRequestBody(JSON)).build()
             http.newCall(requete).execute().use { Reponse(it.code, it.body?.string() ?: "") }
         } catch (e: Exception) { Reponse(503, "{\"detail\":\"réseau indisponible : ${EnvoiSawali.echapper(e.message ?: e.javaClass.simpleName)}\"}") }
