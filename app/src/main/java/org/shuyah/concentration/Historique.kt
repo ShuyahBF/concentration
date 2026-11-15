@@ -106,7 +106,7 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
         try {
             for (p in liste) {
                 val v = ContentValues().apply { put("adresse", p.adresse); put("recuLe", p.recuLeMs); put("genre", p.genre); put("montant", p.montant); put("tiers", p.tiers); put("solde", p.soldeApres); put("corps", p.corps); put("reference", p.reference); put("categorie", p.categorie); if (!p.estTransaction) put("envoye", 1) }
-                if (bd.insertWithOnConflict("paiements", null, v, SQLiteDatabase.CONFLICT_IGNORE) != -1L) ajoutes++
+                if (bd.insertWithOnConflict("paiements", null, v, SQLiteDatabase.CONFLICT_IGNORE) != -1L && p.estTransaction) ajoutes++     // seules les vraies transactions sont comptées
             }
             bd.setTransactionSuccessful()
         } finally { bd.endTransaction() }
@@ -135,6 +135,6 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
     /** Nombre de paiements en attente d'envoi à SAWALI. */
     @Synchronized fun nombreNonEnvoyes(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM paiements WHERE envoye = 0", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
-    /** Nombre de paiements enregistrés (tous). */
-    @Synchronized fun nombrePaiements(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM paiements", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+    /** Nombre de paiements enregistrés : les vraies TRANSACTIONS seulement (promo, alerte et message sont gardés mais hors décompte). */
+    @Synchronized fun nombrePaiements(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM paiements WHERE categorie = 'TRANSACTION'", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
 }
