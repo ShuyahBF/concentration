@@ -6,7 +6,9 @@ import org.junit.Test
 /** Tests de la logique pure de l'agenda : corps JSON, dates affichées, fin de rendez-vous. */
 class AgendaTest {
     @Test fun corpsJsonEchappes() {
-        assertEquals("{\"gmail\":\"awa.badini@gmail.com\"}", Agenda.corpsDemande(" awa.badini@gmail.com "))
+        assertEquals("{\"gmail\":\"awa.badini@gmail.com\",\"nom\":\"\"}", Agenda.corpsDemande(" awa.badini@gmail.com "))
+        assertEquals("{\"gmail\":\"a@b.co\",\"nom\":\"Concentration · Pixel 7\"}", Agenda.corpsDemande("a@b.co", "Concentration · Pixel 7"))
+        assertEquals(24, Agenda.aleatoire(24).length); assertTrue(Regex("[a-z0-9]{32}").matches(Agenda.aleatoire(32))); assertNotEquals(Agenda.aleatoire(24), Agenda.aleatoire(24))
         assertEquals("{\"texte\":\"samedi 8h15 \\\"dentiste\\\"\"}", Agenda.corpsAnalyse("samedi 8h15 \"dentiste\""))
         assertEquals("{\"titre\":\"RDV\",\"debut\":\"2026-11-21T08:15:00+00:00\",\"fin\":\"2026-11-21T09:15:00+00:00\"}", Agenda.corpsCreation("RDV", "2026-11-21T08:15:00+00:00", "2026-11-21T09:15:00+00:00"))
         assertEquals("{\"id\":\"ev1\"}", Agenda.corpsSuppression("ev1"))

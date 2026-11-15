@@ -85,7 +85,7 @@ internal fun OngletAgenda() {
                         Button({
                             if (!Agenda.gmailValide(gmail)) { Avis.resultat(c, "Indiquez l'adresse e-mail de votre compte Google."); return@Button }
                             Avis.enCours(c, "Envoi de votre demande en cours…")
-                            appel("demander", Agenda.corpsDemande(gmail)) { r -> Avis.resultat(c, if (r.ok) "Demande envoyée : l'administrateur doit l'accepter." else "Demande impossible : " + r.message()); actualiser(false) }
+                            appel("demander", Agenda.corpsDemande(gmail, "Concentration · " + android.os.Build.MODEL)) { r -> Avis.resultat(c, if (r.ok) "Demande envoyée : l'administrateur doit l'accepter." else "Demande impossible : " + r.message()); actualiser(false) }
                         }, enabled = !occupe) { Icon(Icons.Filled.Send, null); Spacer(Modifier.width(6.dp)); Text("Demander l'accès") }
                         Text("L'administrateur vérifie votre compte avant que vous puissiez lier votre agenda : vous êtes responsable de l'adresse indiquée.", fontSize = 11.sp, color = Color(0xFF64748B))
                     } else {
@@ -111,6 +111,11 @@ internal fun OngletAgenda() {
                     }
                 }
             }
+        }
+
+        // Politique de confidentialité propre à Concentration (page publique de SAWALI, citée dans la validation Google)
+        TextButton({ c.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sawalismartsystems.com/privacy/concentration")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) {
+            Icon(Icons.Filled.PrivacyTip, null); Spacer(Modifier.width(6.dp)); Text("Politique de confidentialité de Concentration")
         }
 
         if (etat?.lie == true) {
