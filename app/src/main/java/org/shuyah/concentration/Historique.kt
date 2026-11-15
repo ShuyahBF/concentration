@@ -13,11 +13,11 @@ import android.database.sqlite.SQLiteOpenHelper
  * Pour un développeur WinDev : c'est l'équivalent d'un fichier HFSQL local à deux tables, sans serveur. `UNIQUE(adresse, recuLe, corps)` empêche d'enregistrer
  * deux fois le même SMS quand la boîte est relue.
  */
-class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicationContext, "concentration.db", null, 3) {
+class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicationContext, "concentration.db", null, 4) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE mesures (id INTEGER PRIMARY KEY AUTOINCREMENT, emplacement INTEGER NOT NULL, operateur TEXT NOT NULL, ms INTEGER NOT NULL, restantMo REAL NOT NULL)")
         db.execSQL("CREATE INDEX idx_mesures ON mesures(emplacement, ms)")
-        db.execSQL("CREATE TABLE paiements (id INTEGER PRIMARY KEY AUTOINCREMENT, adresse TEXT NOT NULL, recuLe INTEGER NOT NULL, genre TEXT NOT NULL, montant INTEGER NOT NULL, tiers TEXT NOT NULL, solde INTEGER, corps TEXT NOT NULL, reference TEXT, envoye INTEGER NOT NULL DEFAULT 0, UNIQUE(adresse, recuLe, corps))")
+        db.execSQL("CREATE TABLE paiements (id INTEGER PRIMARY KEY AUTOINCREMENT, adresse TEXT NOT NULL, recuLe INTEGER NOT NULL, genre TEXT NOT NULL, montant INTEGER NOT NULL, tiers TEXT NOT NULL, solde INTEGER, corps TEXT NOT NULL, reference TEXT, envoye INTEGER NOT NULL DEFAULT 0, categorie TEXT NOT NULL DEFAULT 'TRANSACTION', UNIQUE(adresse, recuLe, corps))")
         db.execSQL("CREATE INDEX idx_paiements ON paiements(recuLe)")
         db.execSQL("CREATE UNIQUE INDEX idx_paiements_ref ON paiements(reference) WHERE reference IS NOT NULL")
     }
@@ -39,12 +39,27 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS idx_paiements_ref ON paiements(reference) WHERE reference IS NOT NULL")
         }
         if (ancienne < 3) versTrois(db)
+        if (ancienne < 4) versQuatre(db)
     }
 
     /**
      * Version 2 → 3 : colonne `envoye` (0 = pas encore envoyé à SAWALI, 1 = envoyé). Les paiements déjà enregistrés sont à envoyer.
      */
     private fun versTrois(db: SQLiteDatabase) { db.execSQL("ALTER TABLE paiements ADD COLUMN envoye INTEGER NOT NULL DEFAULT 0") }
+
+    /**
+     * Version 3 → 4 : colonne `categorie` (TRANSACTION, PROMO, ALERTE, MESSAGE). Les paiements déjà enregistrés sont RECLASSÉS ; ceux qui ne sont pas des transactions
+     * restent en base avec une pastille grise, hors décompte, et sont marqués « envoyés » (jamais transmis à SAWALI).
+     */
+    private fun versQuatre(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE paiements ADD COLUMN categorie TEXT NOT NULL DEFAULT 'TRANSACTION'")
+        val lignes = mutableListOf<Array<Any>>()
+        db.rawQuery("SELECT id, adresse, corps, reference FROM paiements", null).use { q -> while (q.moveToNext()) lignes += arrayOf(q.getLong(0), q.getString(1), q.getString(2), q.getString(3) ?: "") }
+        lignes.forEach { l ->
+            var cat = ClassificationSms.categorie(l[1] as String, l[2] as String, (l[3] as String).ifEmpty { null })
+            if (cat != ClassificationSms.Categorie.TRANSACTION) db.execSQL("UPDATE paiements SET categorie = ?, envoye = 1 WHERE id = ?", arrayOf<Any>(cat.name, l[0]))
+        }
+    }
 
     companion object {
         @Volatile private var instance: Historique? = null
@@ -74,13 +89,13 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
     /** Ajoute un paiement ; faux si ce SMS est déjà enregistré. */
     @Synchronized fun ajouterPaiement(p: Paiements.Paiement): Boolean =
         writableDatabase.insertWithOnConflict("paiements", null, ContentValues().apply {
-            put("adresse", p.adresse); put("recuLe", p.recuLeMs); put("genre", p.genre); put("montant", p.montant); put("tiers", p.tiers); put("solde", p.soldeApres); put("corps", p.corps); put("reference", p.reference)
+            put("adresse", p.adresse); put("recuLe", p.recuLeMs); put("genre", p.genre); put("montant", p.montant); put("tiers", p.tiers); put("solde", p.soldeApres); put("corps", p.corps); put("reference", p.reference); put("categorie", p.categorie); if (!p.estTransaction) put("envoye", 1)
         }, SQLiteDatabase.CONFLICT_IGNORE) != -1L
 
     /** Paiements depuis cet instant, du plus récent au plus ancien. */
     @Synchronized fun paiements(depuisMs: Long): List<Paiements.Paiement> =
-        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference FROM paiements WHERE recuLe >= ? ORDER BY recuLe DESC", arrayOf(depuisMs.toString())).use { q ->
-            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7))) }
+        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, 0, categorie FROM paiements WHERE recuLe >= ? ORDER BY recuLe DESC", arrayOf(depuisMs.toString())).use { q ->
+            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), 0, q.getString(9))) }
         }
 
     /** Ajoute plusieurs paiements d'un coup (une seule transaction : rapide même pour des milliers de SMS) ; rend le nombre de NOUVEAUX paiements (les doublons sont ignorés). */
@@ -90,7 +105,7 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
         bd.beginTransaction()
         try {
             for (p in liste) {
-                val v = ContentValues().apply { put("adresse", p.adresse); put("recuLe", p.recuLeMs); put("genre", p.genre); put("montant", p.montant); put("tiers", p.tiers); put("solde", p.soldeApres); put("corps", p.corps); put("reference", p.reference) }
+                val v = ContentValues().apply { put("adresse", p.adresse); put("recuLe", p.recuLeMs); put("genre", p.genre); put("montant", p.montant); put("tiers", p.tiers); put("solde", p.soldeApres); put("corps", p.corps); put("reference", p.reference); put("categorie", p.categorie); if (!p.estTransaction) put("envoye", 1) }
                 if (bd.insertWithOnConflict("paiements", null, v, SQLiteDatabase.CONFLICT_IGNORE) != -1L) ajoutes++
             }
             bd.setTransactionSuccessful()
@@ -100,14 +115,14 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
 
     /** TOUS les paiements enregistrés (avec leur identifiant), du plus récent au plus ancien : les statistiques et les filtres sont calculés en mémoire sur cette liste. */
     @Synchronized fun tousPaiements(): List<Paiements.Paiement> =
-        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, id FROM paiements ORDER BY recuLe DESC", null).use { q ->
-            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8))) }
+        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, id, categorie FROM paiements ORDER BY recuLe DESC", null).use { q ->
+            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8), q.getString(9))) }
         }
 
     /** Paiements pas encore envoyés à SAWALI (les plus anciens d'abord), `max` au plus. */
     @Synchronized fun nonEnvoyes(max: Int): List<Paiements.Paiement> =
-        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, id FROM paiements WHERE envoye = 0 ORDER BY recuLe LIMIT ?", arrayOf(max.toString())).use { q ->
-            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8))) }
+        readableDatabase.rawQuery("SELECT adresse, recuLe, genre, montant, tiers, solde, corps, reference, id, categorie FROM paiements WHERE envoye = 0 ORDER BY recuLe LIMIT ?", arrayOf(max.toString())).use { q ->
+            buildList { while (q.moveToNext()) add(Paiements.Paiement(q.getString(0), q.getLong(1), q.getString(2), q.getLong(3), q.getString(4), if (q.isNull(5)) null else q.getLong(5), q.getString(6), q.getString(7), q.getLong(8), q.getString(9))) }
         }
 
     /** Marque ces paiements comme envoyés à SAWALI. */

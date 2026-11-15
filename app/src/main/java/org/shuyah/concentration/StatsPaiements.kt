@@ -70,6 +70,7 @@ object StatsPaiements {
     /** Chiffres clés : nombre, dépenses, recettes, solde net (recettes − dépenses), dépense moyenne, plus grosse dépense. */
     data class Totaux(val nombre: Int, val depenses: Long, val recettes: Long, val net: Long, val depenseMoyenne: Long, val plusGrosse: Long, val nbDepenses: Int, val nbRecettes: Int)
     fun totaux(liste: List<Paiements.Paiement>): Totaux {
+        val liste = liste.filter { it.estTransaction }      // promo, alerte de banque et message de personne ne comptent jamais
         val dep = liste.filter { it.genre == "DEPENSE" }; val rec = liste.filter { it.genre == "RECETTE" }
         val d = dep.sumOf { it.montant }; val r = rec.sumOf { it.montant }
         return Totaux(liste.size, d, r, r - d, if (dep.isEmpty()) 0 else d / dep.size, dep.maxOfOrNull { it.montant } ?: 0, dep.size, rec.size)
@@ -78,14 +79,14 @@ object StatsPaiements {
     /** Une carte par opérateur : nombre de paiements, dépenses et recettes. Classées par nombre de paiements décroissant. */
     data class ParOperateur(val operateur: String, val nombre: Int, val depenses: Long, val recettes: Long)
     fun parOperateur(liste: List<Paiements.Paiement>): List<ParOperateur> =
-        liste.groupBy { operateurDe(it) }.map { (op, l) -> ParOperateur(op, l.size, l.filter { it.genre == "DEPENSE" }.sumOf { it.montant }, l.filter { it.genre == "RECETTE" }.sumOf { it.montant }) }
+        liste.filter { it.estTransaction }.groupBy { operateurDe(it) }.map { (op, l) -> ParOperateur(op, l.size, l.filter { it.genre == "DEPENSE" }.sumOf { it.montant }, l.filter { it.genre == "RECETTE" }.sumOf { it.montant }) }
             .sortedByDescending { it.nombre }
 
     /** Une barre de l'histogramme : `cle` = « AAAA-MM-JJ » (par jour) ou « AAAA-MM » (par mois), avec dépenses, recettes et nombre. */
     data class Barre(val cle: String, val depenses: Long, val recettes: Long, val nombre: Int)
     /** Activité par jour ou par mois, du plus ancien au plus récent (seules les périodes qui ont des paiements). */
     fun parPeriode(liste: List<Paiements.Paiement>, parMois: Boolean, zone: TimeZone = TimeZone.getDefault()): List<Barre> =
-        liste.groupBy { cleDe(it.recuLeMs, parMois, zone) }.map { (k, l) -> Barre(k, l.filter { it.genre == "DEPENSE" }.sumOf { it.montant }, l.filter { it.genre == "RECETTE" }.sumOf { it.montant }, l.size) }.sortedBy { it.cle }
+        liste.filter { it.estTransaction }.groupBy { cleDe(it.recuLeMs, parMois, zone) }.map { (k, l) -> Barre(k, l.filter { it.genre == "DEPENSE" }.sumOf { it.montant }, l.filter { it.genre == "RECETTE" }.sumOf { it.montant }, l.size) }.sortedBy { it.cle }
 
     /** « 2026-11-13 » (jour) ou « 2026-11 » (mois) d'un instant. */
     fun cleDe(ms: Long, parMois: Boolean, zone: TimeZone = TimeZone.getDefault()): String {
@@ -104,12 +105,12 @@ object StatsPaiements {
 
     /** Top des plus gros paiements du sens choisi (dépenses par défaut). */
     fun topMontants(liste: List<Paiements.Paiement>, genre: String = "DEPENSE", n: Int = 10): List<Paiements.Paiement> =
-        liste.filter { it.genre == genre }.sortedByDescending { it.montant }.take(n)
+        liste.filter { it.estTransaction && it.genre == genre }.sortedByDescending { it.montant }.take(n)
 
     /** Un bénéficiaire (ou expéditeur) : nom affiché, nombre de paiements et total. Les noms sont regroupés sans tenir compte des accents ni des majuscules. */
     data class Tiers(val nom: String, val nombre: Int, val total: Long)
     fun topTiers(liste: List<Paiements.Paiement>, genre: String = "DEPENSE", n: Int = 10): List<Tiers> =
-        liste.filter { it.genre == genre }.groupBy { normaliser(it.tiers.ifBlank { "(sans nom)" }) }
+        liste.filter { it.estTransaction && it.genre == genre }.groupBy { normaliser(it.tiers.ifBlank { "(sans nom)" }) }
             .map { (_, l) -> Tiers(l.first().tiers.ifBlank { "(sans nom)" }, l.size, l.sumOf { it.montant }) }
             .sortedByDescending { it.total }.take(n)
 
@@ -125,7 +126,7 @@ object StatsPaiements {
         fun e(v: Any?) = "\"" + (v?.toString() ?: "").replace("\"", "\"\"") + "\""
         val fmt = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).apply { timeZone = zone }
         val tete = listOf("Date", "Opérateur", "Sens", "Montant (FCFA)", "Bénéficiaire / expéditeur", "Solde après", "Transaction").joinToString(";") { e(it) }
-        return "﻿" + tete + "\n" + liste.joinToString("\n") { p ->
+        return "﻿" + tete + "\n" + liste.filter { it.estTransaction }.joinToString("\n") { p ->
             listOf(fmt.format(p.recuLeMs), operateurDe(p), if (p.genre == "RECETTE") "Recette" else "Dépense", p.montant, p.tiers, p.soldeApres ?: "", p.reference ?: "").joinToString(";") { e(it) }
         }
     }

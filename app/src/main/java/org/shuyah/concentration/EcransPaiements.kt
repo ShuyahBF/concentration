@@ -190,6 +190,8 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         if (filtrees.isEmpty()) Text("Aucun paiement pour ces critères.", fontSize = 13.sp, color = GRIS)
         else {
             Chiffre("Paiements", "${tot.nombre}  (${tot.nbDepenses} dépenses · ${tot.nbRecettes} recettes)")
+            val horsDecompte = filtrees.count { !it.estTransaction }
+            if (horsDecompte > 0) Chiffre("Hors décompte (promo, alerte, message)", "$horsDecompte", GRIS)
             Chiffre("Dépenses", francs(tot.depenses), Rouge)
             Chiffre("Recettes", francs(tot.recettes), Vert)
             Chiffre("Solde net (recettes − dépenses)", (if (tot.net >= 0) "+ " else "− ") + francs(Math.abs(tot.net)), if (tot.net >= 0) Vert else Rouge)
@@ -280,10 +282,13 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         filtrees.take(affiches).forEach { p ->
             Row(Modifier.fillMaxWidth().clickable { ouvert = p }.padding(top = 10.dp), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
-                    Text(p.tiers.ifBlank { p.adresse }, fontSize = 14.sp, color = BleuNuit)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(p.tiers.ifBlank { p.adresse }, fontSize = 14.sp, color = if (p.estTransaction) BleuNuit else GRIS)
+                        PastilleCategorie(p)
+                    }
                     Text(dateHeure(p.recuLeMs) + " · " + StatsPaiements.operateurDe(p) + (p.soldeApres?.let { " · solde " + francs(it) } ?: ""), fontSize = 11.sp, color = GRIS_CLAIR)
                 }
-                Text((if (p.genre == "RECETTE") "+ " else "− ") + francs(p.montant), fontSize = 14.sp, color = if (p.genre == "RECETTE") Vert else Rouge, textAlign = TextAlign.End)
+                Text((if (!p.estTransaction) "" else if (p.genre == "RECETTE") "+ " else "− ") + francs(p.montant), fontSize = 14.sp, color = if (!p.estTransaction) GRIS else if (p.genre == "RECETTE") Vert else Rouge, textAlign = TextAlign.End)
             }
         }
         if (filtrees.size > affiches) OutlinedButton({ affiches += TAILLE_PAGE }, Modifier.fillMaxWidth().padding(top = 10.dp)) { Icon(Icons.Filled.ExpandMore, null); Spacer(Modifier.width(4.dp)); Text("Afficher plus (${filtrees.size - affiches} restants)") }
@@ -294,7 +299,9 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         AlertDialog(onDismissRequest = { ouvert = null }, title = { Text(p.tiers.ifBlank { p.adresse }) },
             text = {
                 Column {
-                    Text((if (p.genre == "RECETTE") "Recette " else "Dépense ") + francs(p.montant), fontSize = 16.sp, color = if (p.genre == "RECETTE") Vert else Rouge)
+                    if (p.estTransaction) Text((if (p.genre == "RECETTE") "Recette " else "Dépense ") + francs(p.montant), fontSize = 16.sp, color = if (p.genre == "RECETTE") Vert else Rouge)
+                    else Row(verticalAlignment = Alignment.CenterVertically) { Text("Montant cité " + francs(p.montant), fontSize = 16.sp, color = GRIS); PastilleCategorie(p) }
+                    if (!p.estTransaction) Text("Ce SMS n'est pas une transaction : il n'est pas compté dans les totaux.", fontSize = 11.sp, color = GRIS_CLAIR)
                     Text(dateHeure(p.recuLeMs) + " · " + StatsPaiements.operateurDe(p), fontSize = 12.sp, color = GRIS)
                     p.soldeApres?.let { Text("Solde après : " + francs(it), fontSize = 12.sp, color = GRIS) }
                     p.reference?.let { Text("Transaction : $it", fontSize = 12.sp, color = GRIS) }
@@ -386,4 +393,13 @@ private fun Camembert(parts: List<Pair<String, Long>>, total: Long) {
             }
         }
     }
+}
+
+
+/** Pastille GRISE « promo » / « alerte » / « message » d'un SMS qui n'est pas une transaction (rien pour une vraie transaction). Jamais la couleur seule : le mot est écrit. */
+@Composable
+private fun PastilleCategorie(p: Paiements.Paiement) {
+    if (p.estTransaction) return
+    val libelle = when (p.categorie) { "PROMO" -> "promo"; "ALERTE" -> "alerte"; "MESSAGE" -> "message"; else -> p.categorie.lowercase() }
+    Text(libelle, fontSize = 10.sp, color = GRIS, modifier = Modifier.padding(start = 6.dp).background(FOND_GRAPHIQUE, androidx.compose.foundation.shape.RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp))
 }
