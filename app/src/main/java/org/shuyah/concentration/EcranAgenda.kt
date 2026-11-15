@@ -89,6 +89,11 @@ internal fun OngletAgenda() {
                         }, enabled = !occupe) { Icon(Icons.Filled.Send, null); Spacer(Modifier.width(6.dp)); Text("Demander l'accès") }
                         Text("L'administrateur vérifie votre compte avant que vous puissiez lier votre agenda : vous êtes responsable de l'adresse indiquée.", fontSize = 11.sp, color = Color(0xFF64748B))
                     } else {
+                        // Consigne AVANT la liaison : sur l'écran Google, la case « Agenda » est décochée par défaut tant que Google n'a pas validé l'application
+                        Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.small) {
+                            Text("⚠️ Avant de continuer : une page Google va s'ouvrir. Vous y verrez la case « Afficher et modifier les événements de tous vos agendas ». COCHEZ cette case, puis touchez « Continuer ». Sans elle, votre agenda ne pourra pas être lié.",
+                                fontSize = 13.sp, modifier = Modifier.padding(10.dp))
+                        }
                         Button({
                             Avis.enCours(c, "Ouverture de la page d'autorisation Google…")
                             appel("lier") { r ->
