@@ -130,6 +130,7 @@ private fun Ecran(retour: Int) {
         Tab(selected = onglet == 1, onClick = { onglet = 1 }, text = { Text("Réseau mobile") })
         Tab(selected = onglet == 2, onClick = { onglet = 2 }, text = { Text("Consommation") })
         Tab(selected = onglet == 3, onClick = { onglet = 3 }, text = { Text("Paiements") })
+        Tab(selected = onglet == 4, onClick = { onglet = 4 }, text = { Text("Agenda") })
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (onglet == 0) {
@@ -385,9 +386,13 @@ private fun Ecran(retour: Int) {
             // ---- 3e onglet « Consommation » : graphique de la consommation Internet estimée entre deux vérifications du solde ----
             OngletConsommation(cartes, tickLecture, maintenant)
             Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
-        } else {
+        } else if (onglet == 3) {
             // ---- 4e onglet « Paiements » : base des SMS de paiement ----
             OngletPaiements(retour, maintenant)
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+        } else {
+            // ---- 5e onglet « Agenda » : Google Agenda lié par la passerelle SAWALI (lot 403) ----
+            OngletAgenda()
             Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
         }
     }
