@@ -48,14 +48,30 @@ internal val Rouge = Color(0xFFD64545)
 internal val Orange = Color(0xFFF6A35B)
 
 /** Écran unique : état, plages horaires, niveau 1 (notifications), niveau 2 (verrou), autorisations et conseils Xiaomi. */
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
     /** Incrémenté à chaque retour sur l'écran : l'état des autorisations est alors relu (l'utilisateur revient des Paramètres). */
     private var retour by mutableIntStateOf(0)
+
+    // ---- VERROU BIOMÉTRIQUE (« à la connexion ») : l'écran reste vide tant que le téléphone n'a pas reconnu l'utilisateur.
+    // Redemandé après plus d'une minute d'absence. Sans capteur ni verrouillage d'écran : pas de verrou.
+    private var ouvert by mutableStateOf(false)
+    private var derniereSortie = 0L
+    private var verrouEnCours = false
+    private fun verrouiller() {
+        if (verrouEnCours) return
+        if (!Biometrie.verrouPossible(this) || (derniereSortie != 0L && System.currentTimeMillis() - derniereSortie < 60_000)) { ouvert = true; return }
+        verrouEnCours = true; ouvert = false
+        Biometrie.verifier(this, "Ouvrir Concentration", "Posez votre doigt pour continuer",
+            surOk = { verrouEnCours = false; ouvert = true },
+            surEchec = { message -> verrouEnCours = false; android.widget.Toast.makeText(this, "Concentration est verrouillée : $message", android.widget.Toast.LENGTH_LONG).show(); finish() })
+    }
+    override fun onStop() { super.onStop(); if (!verrouEnCours) derniereSortie = System.currentTimeMillis() }
+    override fun onStart() { super.onStart(); verrouiller() }
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         Presence.demarrer(lifecycleScope)
-        setContent { MaterialTheme { Ecran(retour) } }
+        setContent { MaterialTheme { if (ouvert) Ecran(retour) else Box(Modifier.fillMaxSize().background(BleuNuit)) } }
     }
 
     override fun onResume() { super.onResume(); retour++ }
