@@ -73,7 +73,7 @@ object ImportSms {
         fun vider() { if (lot.isNotEmpty()) { ajoutes += base.ajouterPaiements(lot); lot.clear() } }
         source { sms ->
             lus++
-            Paiements.analyser(sms.adresse, sms.corps, sms.dateMs)?.let { lot += it; paiements++ }
+            Paiements.analyser(sms.adresse, sms.corps, sms.dateMs)?.let { lot += it; if (it.estTransaction) paiements++ }     // le bilan ne compte que les vraies transactions
             if (lot.size >= 200) vider()
             if (lus % 500 == 0) progression(lus, paiements)
         }
