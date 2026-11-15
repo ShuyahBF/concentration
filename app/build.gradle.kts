@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 35
-        versionName = "1.34"
+        versionCode = 36
+        versionName = "1.35"
         // Nom du fichier livré : concentration-<version>-debug.apk (copié ensuite en concentration-<version>.apk)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Date et heure de compilation, affichées en bas de l'écran principal.
@@ -61,6 +61,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     // Signal de présence à SAWALI (règle 4 du propriétaire)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Empreinte digitale (verrou de l'application et code secret mémorisé)
+    implementation("androidx.biometric:biometric:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     testImplementation("junit:junit:4.13.2")
 }

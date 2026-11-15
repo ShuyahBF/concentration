@@ -44,6 +44,8 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
     var absents by remember { mutableStateOf<List<Paiements.Paiement>>(emptyList()) }
     var cible by remember { mutableStateOf<Pair<Reseau.CarteSim, CodesUssd.Code>?>(null) }     // vérification en attente du code secret
     var pin by remember { mutableStateOf("") }
+    var memoriser by remember { mutableStateOf(true) }                                          // case « mémoriser avec mon empreinte » du dialogue du code secret
+    val activite = c as? androidx.fragment.app.FragmentActivity
     val cartes = remember(maintenant) { Reseau.cartes(c) }
     val restantes = VerifOperateur.restantes(Reglages.horairesVerif(c), System.currentTimeMillis())
 
@@ -78,6 +80,14 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
                 absents = VerifOperateur.absents(VerifOperateur.analyserReleve(r.texte, maintenantMs), Historique.de(c).tousPaiements(), maintenantMs)
             }
         }
+    }
+    // EMPREINTE : si le code secret de cet opérateur est mémorisé, le doigt remplace la saisie ; sinon (ou si l'invite est annulée) le dialogue de saisie s'ouvre
+    fun demanderCode(carte: Reseau.CarteSim, code: CodesUssd.Code) {
+        val cle = carte.operateur.trim().lowercase()
+        if (activite != null && Biometrie.disponible(c) && Biometrie.codeMemorise(c, cle)) {
+            Biometrie.retrouver(activite, cle, { secret -> envoyer(carte, code, secret) }, { message ->
+                android.widget.Toast.makeText(c, message, android.widget.Toast.LENGTH_LONG).show(); pin = ""; cible = carte to code })
+        } else { pin = ""; cible = carte to code }
     }
 
     Section("Vérifier auprès de l'opérateur", Icons.Filled.FactCheck) {
@@ -115,13 +125,13 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
             if (releve == null) {
                 Text("${carte.operateur} : aucun code « mini relevé » dans auRor" + if (copie == null) " (Internet n'a jamais répondu : connectez-vous une fois)." else " (à ajouter dans auRor → Codes USSD, puis appuyez sur « Actualiser les codes d'auRor »).", fontSize = 12.sp, color = Rouge, modifier = Modifier.padding(top = 4.dp))
             } else {
-                Button({ if (releve.demandePin) { pin = ""; cible = carte to releve } else envoyer(carte, releve, null) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Button({ if (releve.demandePin) demanderCode(carte, releve) else envoyer(carte, releve, null) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Icon(Icons.Filled.FactCheck, null); Spacer(Modifier.width(8.dp)); Column { Text("Vérifier ${carte.operateur} : ${releve.titre}"); Text(releve.code, fontSize = 11.sp) }
                 }
             }
             if (notif != null && notif.demandePin) {
                 // Code complet avec le code secret (ex. renvoi du SMS d'une opération) : envoi direct, code secret saisi masqué
-                OutlinedButton({ pin = ""; cible = carte to notif }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                OutlinedButton({ demanderCode(carte, notif) }, enabled = !enCours, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Icon(Icons.Filled.Sms, null); Spacer(Modifier.width(8.dp)); Column { Text("${carte.operateur} : ${notif.titre}"); Text(notif.code, fontSize = 11.sp) }
                 }
             } else if (notif != null) {
@@ -211,12 +221,19 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
             title = { Text("Code secret ${carte.operateur}") },
             text = {
                 Column {
-                    Text("Saisissez votre code secret Mobile Money. Il est utilisé pour cet envoi puis oublié : il n'est jamais enregistré.", fontSize = 13.sp)
+                    Text("Saisissez votre code secret Mobile Money. Sans l'option empreinte ci-dessous, il est utilisé pour cet envoi puis oublié.", fontSize = 13.sp)
                     OutlinedTextField(pin, { pin = it.filter { ch -> ch.isDigit() }.take(8) }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    // Enrôlement : le code est chiffré par le coffre du téléphone et ne se déverrouille qu'avec le doigt
+                    if (activite != null && Biometrie.disponible(c)) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                        Checkbox(memoriser, { memoriser = it }); Text("🖐️ Mémoriser mon code avec mon empreinte", fontSize = 13.sp, color = Vert)
+                    }
                 }
             },
-            confirmButton = { Button({ val secret = pin; pin = ""; cible = null; envoyer(carte, code, secret) }, enabled = pin.length >= 4) { Icon(Icons.Filled.Send, null); Spacer(Modifier.width(6.dp)); Text("Envoyer") } },
+            confirmButton = { Button({
+                val secret = pin; pin = ""; cible = null
+                if (activite != null && memoriser && Biometrie.disponible(c)) Biometrie.memoriser(activite, carte.operateur.trim().lowercase(), secret, { envoyer(carte, code, secret) }, { envoyer(carte, code, secret) })
+                else envoyer(carte, code, secret) }, enabled = pin.length >= 4) { Icon(Icons.Filled.Send, null); Spacer(Modifier.width(6.dp)); Text("Envoyer") } },
             dismissButton = { OutlinedButton({ cible = null; pin = "" }) { Icon(Icons.Filled.Close, null); Spacer(Modifier.width(6.dp)); Text("Annuler") } },
         )
     }
