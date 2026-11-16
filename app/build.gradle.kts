@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 40
-        versionName = "1.39"
+        versionCode = 41
+        versionName = "1.40"
         // Fichier brut : concentration-<version>-<saveur>-release.apk, livré sous le nom concentration-<version>[-sms].apk (sans « debug » ni « release »)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Date et heure de compilation, affichées en bas de l'écran principal.
