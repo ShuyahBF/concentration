@@ -27,7 +27,7 @@ object Paiements {
     private val DATE_TRANSACTION = Regex("^[A-Z]{2}(\\d{2})(\\d{2})(\\d{2})\\.(\\d{2})(\\d{2})\\.")
 
     private val MOTS_DEPENSE = listOf("vous avez payé", "vous avez paye", "votre paiement", "paiement", "payé", "achat", "retrait", "vous avez envoyé", "vous avez envoye",
-        "envoi de", "transfert de", "transfert vers", "facture", "débit", "debit", "vous avez transféré")
+        "envoi de", "transfert de", "transfert vers", "facture", "débit", "debit", "vous avez transféré", "vous avez transfere", "vous avez recharge", "vous avez rechargé")
     private val MOTS_RECETTE = listOf("vous avez reçu", "vous avez recu", "reçu de", "recu de", "dépôt", "depot", "crédit de", "credit de", "versement", "transfert reçu")
     private val MOTS_PROMO = listOf("gagnez", "gagner", "promo", "offre", "bonus", "félicitations", "felicitations", "tentez", "jeu concours", "cliquez")
 
@@ -116,7 +116,9 @@ object Paiements {
         // Catégorie (voir ClassificationSms) : un SMS qui n'est pas une TRANSACTION (promo, alerte de banque, message de personne) est GARDÉ avec une pastille grise,
         // mais ne compte jamais dans les totaux, les graphiques ni l'envoi à SAWALI. Les mots promotionnels explicites (« gagnez », « jeu concours »…) donnent aussi « promo ».
         var categorie = ClassificationSms.categorie(adresse, corps, reference)
-        if (categorie == ClassificationSms.Categorie.TRANSACTION && MOTS_PROMO.any { t.contains(it) }) categorie = ClassificationSms.Categorie.PROMO
+        // Un SMS qui porte un NUMÉRO DE TRANSACTION de l'opérateur est une transaction, même s'il y ajoute une phrase commerciale (« Vous avez recharge 1,000 FCFA… Gagnez 100% de bonus…
+        // TRANS ID: RC261115… ») : les mots promotionnels ne s'appliquent qu'aux SMS SANS numéro de transaction.
+        if (categorie == ClassificationSms.Categorie.TRANSACTION && reference == null && MOTS_PROMO.any { t.contains(it) }) categorie = ClassificationSms.Categorie.PROMO
         // Une vraie transaction dont le sens est indéterminé reste ignorée (prudence) ; un SMS hors décompte est gardé avec le sens « AUTRE »
         if (categorie == ClassificationSms.Categorie.TRANSACTION && genreTrouve == null) return null
         val genre = genreTrouve ?: "AUTRE"

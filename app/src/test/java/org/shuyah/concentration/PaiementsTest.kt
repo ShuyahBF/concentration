@@ -61,4 +61,16 @@ class PaiementsTest {
         assertNull(Paiements.analyser("OM", "Retrait de 10000 FCFA effectué.", 5L)!!.reference)
         assertEquals(5L, Paiements.analyser("OM", "Retrait de 10000 FCFA effectué.", 5L)!!.recuLeMs)       // sans numéro de transaction : heure de réception
     }
+
+    /** Recharge Orange avec phrase commerciale (signalée le 16/11/2026) : c'est une TRANSACTION (dépense de 1 000), pas une promo. */
+    @Test fun rechargeAvecPhraseCommercialeEstUneTransaction() {
+        val sms = "Vous avez recharge 1,000.00 FCFA d unites. Gagnez 100% de bonus sur toutes vos recharges Orange Money. Bonus valable 7 jours et utilisable vers tous les reseaux nationaux. " +
+            "Votre solde est de 66622.5202 FCFA. TRANS ID: RC261115.2130.68181965. Rendez-vous sur Max it : http://urlz.fr/bpmE pour profiter de nos meilleures offres."
+        val p = Paiements.analyser("OrangeMoney", sms, 1L)!!
+        assertEquals("TRANSACTION", p.categorie); assertTrue(p.estTransaction)
+        assertEquals("DEPENSE", p.genre); assertEquals(1000L, p.montant.toLong()); assertEquals("RC261115.2130.68181965", p.reference)
+        // Une vraie promo (sans numéro de transaction) reste une promo
+        val promo = Paiements.analyser("OrangeMoney", "Gagnez 100% de bonus sur vos recharges de 1000 FCFA. Offre valable 7 jours. Composez *144*9#.", 1L)!!
+        assertEquals("PROMO", promo.categorie)
+    }
 }

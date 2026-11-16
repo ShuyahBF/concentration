@@ -26,7 +26,7 @@ object ClassificationSms {
     private val POURCENT = Regex("[0-9]\\s?%")
     private val OFFRE = Regex("beneficiez|profitez|gagnez|retirez|reglez|rechargez|abonnez|obtenez|offre|promo|bonus|cadeau|vous accompagne|decouvrez")
     private val VRAIE_FORME = Regex("(debit|credit)\\s*montant\\s*:")
-    private val VOUS_AVEZ = Regex("vous avez (recu|envoye|paye|transfere|effectu)")
+    private val VOUS_AVEZ = Regex("vous avez (recu|envoye|paye|transfere|effectu|recharge)")
     private val BANQUE = Regex("ubabf|\\buba\\b|banque|bank|coris|ecobank|sgbf|\\bboa\\b|bicia|bdm|cbao|sonibank|societe generale")
     private val NUMERO_EXPEDITEUR = Regex("^\\+?\\d{7,}$")
 
