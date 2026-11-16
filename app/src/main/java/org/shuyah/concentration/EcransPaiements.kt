@@ -141,9 +141,10 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
         Text("SAWALI affiche vos transactions SMS (menu « Transactions SMS », administrateur) avec les mêmes filtres, et peut associer un numéro à une plateforme (ALBARKA…). Dans SAWALI : Transactions SMS → Téléphones source → Ajouter, puis saisissez ici l'identifiant et la clé.", fontSize = 12.sp, color = GRIS)
         OutlinedTextField(urlSawali, { urlSawali = it }, label = { Text("Adresse de SAWALI (laisser vide : adresse habituelle)") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
         OutlinedTextField(sourceSawali, { sourceSawali = it }, label = { Text("Identifiant du téléphone") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+        // Règle 22 : pictogramme œil DANS le champ (remplace le lien texte « Afficher la clé »)
         OutlinedTextField(cleSawali, { cleSawali = it }, label = { Text("Clé du téléphone") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            visualTransformation = if (voirCle) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation())
-        Text(if (voirCle) "Masquer la clé" else "Afficher la clé", fontSize = 13.sp, color = Bleu, modifier = Modifier.padding(top = 2.dp).clickable { voirCle = !voirCle })
+            visualTransformation = if (voirCle) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            trailingIcon = { IconButton({ voirCle = !voirCle }) { Icon(if (voirCle) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, if (voirCle) "Masquer la saisie" else "Afficher la saisie") } })
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
             Switch(envoiAuto, { envoiAuto = it; Reglages.sawaliAuto(c, it) }); Spacer(Modifier.width(8.dp))
             Column { Text("Envoyer automatiquement chaque nouveau paiement", fontSize = 13.sp, color = BleuNuit); Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Filled.CheckCircle, null, tint = Vert, modifier = Modifier.size(14.dp)); Text(" Enregistré automatiquement dès que vous basculez", fontSize = 11.sp, color = GRIS_CLAIR) } }

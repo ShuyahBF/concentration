@@ -222,8 +222,12 @@ internal fun SectionVerifOperateur(maintenant: Long, surChangement: () -> Unit) 
             text = {
                 Column {
                     Text("Saisissez votre code secret Mobile Money. Sans l'option empreinte ci-dessous, il est utilisé pour cet envoi puis oublié.", fontSize = 13.sp)
-                    OutlinedTextField(pin, { pin = it.filter { ch -> ch.isDigit() }.take(8) }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    // Règle 22 (16/11/2026) : œil pour afficher / masquer le code secret ; masqué par défaut à chaque ouverture
+                    var voirPin by remember { mutableStateOf(false) }
+                    OutlinedTextField(pin, { pin = it.filter { ch -> ch.isDigit() }.take(8) }, singleLine = true,
+                        visualTransformation = if (voirPin) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword), modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        trailingIcon = { IconButton({ voirPin = !voirPin }) { Icon(if (voirPin) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, if (voirPin) "Masquer la saisie" else "Afficher la saisie") } })
                     // Enrôlement : le code est chiffré par le coffre du téléphone et ne se déverrouille qu'avec le doigt
                     if (activite != null && Biometrie.disponible(c)) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                         Checkbox(memoriser, { memoriser = it }); Text("🖐️ Mémoriser mon code avec mon empreinte", fontSize = 13.sp, color = Vert)
