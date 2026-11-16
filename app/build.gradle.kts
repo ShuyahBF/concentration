@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 40
-        versionName = "1.39"
+        versionCode = 41
+        versionName = "1.40"
         // Fichier brut : concentration-<version>-<saveur>-release.apk, livré sous le nom concentration-<version>[-sms].apk (sans « debug » ni « release »)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Date et heure de compilation, affichées en bas de l'écran principal.
@@ -30,6 +30,26 @@ android {
     productFlavors {
         create("standard") { dimension = "lecture"; buildConfigField("boolean", "SMS_DIRECT", "false") }
         create("sms") { dimension = "lecture"; buildConfigField("boolean", "SMS_DIRECT", "true") }
+    }
+    // Signature PERMANENTE (clé ShuyahStore) : les 4 valeurs sont lues dans les variables d'environnement ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD,
+    // ANDROID_KEY_ALIAS et ANDROID_KEY_PASSWORD (ou en propriétés Gradle -P…). Aucune clé ni mot de passe n'est dans le dépôt.
+    // Si l'une manque ou si le fichier est absent, on garde le comportement précédent (clé locale de l'environnement avec -PsignerAvecCleLocale=true).
+    fun valeurSignature(nom: String): String? =
+        ((project.findProperty(nom) as String?) ?: System.getenv(nom))?.takeIf { it.isNotBlank() }
+    val cheminCle = valeurSignature("ANDROID_KEYSTORE_FILE")
+    val mdpFichier = valeurSignature("ANDROID_KEYSTORE_PASSWORD")
+    val aliasCle = valeurSignature("ANDROID_KEY_ALIAS")
+    val mdpCle = valeurSignature("ANDROID_KEY_PASSWORD")
+    val signaturePermanente = cheminCle != null && file(cheminCle).exists() && mdpFichier != null && aliasCle != null && mdpCle != null
+    signingConfigs {
+        if (signaturePermanente) {
+            create("permanente") {
+                storeFile = file(cheminCle!!)
+                storePassword = mdpFichier
+                keyAlias = aliasCle
+                keyPassword = mdpCle
+            }
+        }
     }
     // Version COMPACTE (-Pcompact=true) : code et ressources réduits par R8, signée avec la clé de debug pour pouvoir s'installer par-dessus les versions de test.
     // Sert à obtenir un fichier léger (moins de 10 Mo) quand le téléchargement du fichier habituel (16 Mo) échoue. Par défaut, rien ne change.
@@ -44,7 +64,9 @@ android {
                 isMinifyEnabled = false
                 // Livraison à la main : -PsignerAvecCleLocale=true signe le build « release » (non débogable) avec la clé de l'environnement pour qu'il s'installe
                 // directement ; aucune clé n'est dans le dépôt, et sans l'option rien ne change.
-                if (project.findProperty("signerAvecCleLocale") == "true") signingConfig = signingConfigs.getByName("debug")
+                // Clé permanente si disponible ; sinon clé locale de l'environnement avec l'option ci-dessus
+                if (signaturePermanente) signingConfig = signingConfigs.getByName("permanente")
+                else if (project.findProperty("signerAvecCleLocale") == "true") signingConfig = signingConfigs.getByName("debug")
             }
         }
     }
