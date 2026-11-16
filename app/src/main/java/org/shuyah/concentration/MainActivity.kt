@@ -29,6 +29,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,12 +143,16 @@ private fun Ecran(retour: Int) {
     val restant = remember(maintenant, actif, plages.toList()) { Reglages.minutesRestantes(c) }
 
     Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9)).statusBarsPadding().navigationBarsPadding()) {
+    // Onglets en PICTOGRAMMES (demande du propriétaire, 16/11/2026) : les titres s'affichaient sur plusieurs lignes (« Consommati-on »). Chaque pictogramme a sa description
+    // pour l'accessibilité (lue par TalkBack) : Général = cible de concentration, Réseau mobile = barres de signal, Consommation = jauge de données, Paiements = porte-monnaie, Agenda = calendrier.
+    val ongletsPictos = listOf(
+        Triple(Icons.Filled.CenterFocusStrong, "Général", Bleu), Triple(Icons.Filled.SignalCellularAlt, "Réseau mobile", Bleu), Triple(Icons.Filled.DataUsage, "Consommation", Bleu),
+        Triple(Icons.Filled.AccountBalanceWallet, "Paiements", Bleu), Triple(Icons.Filled.CalendarMonth, "Agenda", Bleu))
     TabRow(selectedTabIndex = onglet, containerColor = Color.White, contentColor = Bleu) {
-        Tab(selected = onglet == 0, onClick = { onglet = 0 }, text = { Text("Général") })
-        Tab(selected = onglet == 1, onClick = { onglet = 1 }, text = { Text("Réseau mobile") })
-        Tab(selected = onglet == 2, onClick = { onglet = 2 }, text = { Text("Consommation") })
-        Tab(selected = onglet == 3, onClick = { onglet = 3 }, text = { Text("Paiements") })
-        Tab(selected = onglet == 4, onClick = { onglet = 4 }, text = { Text("Agenda") })
+        ongletsPictos.forEachIndexed { i, (picto, titre, _) ->
+            Tab(selected = onglet == i, onClick = { onglet = i }, modifier = Modifier.semantics { contentDescription = "Onglet $titre" },
+                icon = { Icon(picto, contentDescription = titre, modifier = Modifier.size(26.dp)) })
+        }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (onglet == 0) {
