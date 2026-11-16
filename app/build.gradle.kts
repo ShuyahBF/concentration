@@ -16,9 +16,9 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 36
-        versionName = "1.35"
-        // Nom du fichier livré : concentration-<version>-debug.apk (copié ensuite en concentration-<version>.apk)
+        versionCode = 37
+        versionName = "1.36"
+        // Fichier brut : concentration-<version>-<saveur>-release.apk, livré sous le nom concentration-<version>[-sms].apk (sans « debug » ni « release »)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Date et heure de compilation, affichées en bas de l'écran principal.
         buildConfigField("String", "DATE_COMPILATION", "\"" + SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date()) + "\"")
@@ -40,7 +40,12 @@ android {
                 isShrinkResources = true
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
                 signingConfig = signingConfigs.getByName("debug")
-            } else isMinifyEnabled = false
+            } else {
+                isMinifyEnabled = false
+                // Livraison à la main : -PsignerAvecCleLocale=true signe le build « release » (non débogable) avec la clé de l'environnement pour qu'il s'installe
+                // directement ; aucune clé n'est dans le dépôt, et sans l'option rien ne change.
+                if (project.findProperty("signerAvecCleLocale") == "true") signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
     compileOptions {
