@@ -45,13 +45,20 @@ object Pare {
     }
 
     /** À appeler après tout changement de réglage. */
-    fun appliquer(c: Context, forcer: Boolean = false) { synchroniser(c, forcer); programmer(c); Reseau.programmer(c); Reseau.programmerExpirations(c) }
+    fun appliquer(c: Context, forcer: Boolean = false) {
+        Plantage.installer(c)
+        // Chaque étape est protégée : une erreur dans l'une (réveil, son, réseau mobile) ne doit ni faire planter l'application ni empêcher les autres
+        for (etape in listOf<() -> Unit>({ synchroniser(c, forcer) }, { programmer(c) }, { Reseau.programmer(c) }, { Reseau.programmerExpirations(c) })) {
+            try { etape() } catch (e: Throwable) { ServiceVpn.erreur = "${e.javaClass.simpleName} : ${e.message}" }
+        }
+    }
 }
 
 /** Reçoit le réveil programmé, le redémarrage du téléphone et la mise à jour de l'application : remet le pare-feu dans le bon état. */
 class RecepteurPlanning : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         // goAsync : le récepteur reste en vie le temps du son (sinon le système peut l'arrêter avant la fin de la mélodie)
+        Plantage.installer(c)
         val attente = goAsync()
         Thread { try { Pare.appliquer(c); Thread.sleep(1500) } finally { attente.finish() } }.start()
     }

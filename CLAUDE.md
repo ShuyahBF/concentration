@@ -57,3 +57,10 @@ Les règles permanentes du propriétaire (commits, version, commentaires, secret
 - Le pictogramme est **dans le champ** (à droite), avec une description d'accessibilité (« Afficher la saisie » / « Masquer la saisie ») et une zone tactile d'au moins 44 px.
 - **Un seul composant par plateforme**, utilisé partout (jamais un `<input type="password">` nu) : web = `ChampMotDePasse` / `MotDePasse` / `PasswordInput` (ou le champ de base de l'interface qui l'intègre quand `type="password"`) ; Android Compose = champ avec `trailingIcon` (`Visibility` / `VisibilityOff`) ; Android à vues = `FrameLayout` + œil ; WinForms = case ou bouton œil qui bascule `UseSystemPasswordChar`.
 - Un nouvel écran, un nouveau projet : le champ secret reçoit l'œil dès la première version. Exception : la saisie d'un code à usage unique (code reçu par e-mail ou SMS, code de l'application d'authentification), qui n'est pas un secret durable.
+
+## Publication dans ShuyahStore à CHAQUE livraison d'APK (règle du propriétaire, 17/11/2026 : « Publier désormais sur ShuyahStore sauf indications contraires »)
+- Après chaque APK release livré, le DÉPOSER aussi dans ShuyahStore (`POST https://shuyahstore-api.onrender.com/api/dev/depot`, champ `fichier`, jeton de dépôt injecté par le secret réseau de l'environnement : ne jamais le demander ni l'afficher). Signature : clé PERMANENTE (variables ANDROID_KEYSTORE_*) ; une application déjà publiée refuse une autre clé.
+- La description de la fiche doit annoncer les autorisations sensibles (SMS, liste des applications installées…), sinon une alerte bloque la publication directe.
+
+## Plantages (1.41, 17/11/2026)
+- `Plantage.kt` garde le détail de tout plantage (pile d'appels, modèle, Android) et l'écran principal l'affiche avec « Copier » ; le démarrage du pare-feu (VPN) ne peut plus faire planter l'application (erreur gardée dans `ServiceVpn.erreur`, fil de lecture entièrement protégé).

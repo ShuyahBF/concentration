@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.*
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -72,6 +73,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
+        Plantage.installer(this)
         Presence.demarrer(lifecycleScope)
         setContent { MaterialTheme { if (ouvert) Ecran(retour) else Box(Modifier.fillMaxSize().background(BleuNuit)) } }
     }
@@ -104,6 +106,12 @@ private fun Ecran(retour: Int) {
     var pareFeu by remember { mutableStateOf(Reglages.pareFeu(c)) }
     var tickVpn by remember { mutableIntStateOf(0) }                     // relu après la fenêtre d'autorisation VPN
     val lanceurVpn = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { tickVpn++ }
+    /** Ouvre la fenêtre système « Demande de connexion VPN » ; si ce téléphone ne peut pas l'ouvrir, on le dit au lieu de planter. */
+    val demanderVpn = {
+        try { VpnService.prepare(c)?.let { i -> lanceurVpn.launch(i) } }
+        catch (e: Throwable) { ServiceVpn.erreur = "Fenêtre d'autorisation VPN impossible à ouvrir (${e.javaClass.simpleName} : ${e.message})"; tickVpn++ }
+    }
+    var plantage by remember { mutableStateOf(Plantage.dernier(c)) }
     var toutSauf by remember { mutableStateOf(Reglages.toutSauf(c)) }
     var bloquees by remember { mutableStateOf(Reglages.bloquees(c)) }
     var autorisees by remember { mutableStateOf(Reglages.autorisees(c)) }
@@ -155,6 +163,21 @@ private fun Ecran(retour: Int) {
         }
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Dernier plantage de l'application (gardé par Plantage.kt) : à copier et transmettre au support
+        plantage?.let { texte ->
+            Carte(Color(0xFFB91C1C)) {
+                Text("L'application s'est fermée la dernière fois", fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Copiez ce détail et transmettez-le au support : il permet de corriger le problème.", fontSize = 12.sp, color = Color.White)
+                Text(texte.take(700), fontSize = 10.sp, color = Color.White, modifier = Modifier.padding(top = 4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                    Button(onClick = {
+                        (c.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("Plantage Concentration", texte))
+                        android.widget.Toast.makeText(c, "Détail copié", android.widget.Toast.LENGTH_SHORT).show()
+                    }) { Icon(Icons.Filled.ContentCopy, null); Text("  Copier") }
+                    Button(onClick = { Plantage.effacer(c); plantage = null }) { Icon(Icons.Filled.Close, null); Text("  Effacer") }
+                }
+            }
+        }
         if (onglet == 0) {
         // ---- État général et interrupteur ----
         Carte(if (restant != null) Vert else Color(0xFF64748B)) {
@@ -304,9 +327,10 @@ private fun Ecran(retour: Int) {
         Section("Niveau 3 · Pare-feu", Icons.Filled.WifiOff) {
             LigneInterrupteur("Couper Internet aux applications bloquées pendant la plage (plus aucun message ni appel)", pareFeu) {
                 pareFeu = it; Reglages.pareFeu(c, it)
-                if (it && !Pare.autorise(c)) VpnService.prepare(c)?.let { i -> lanceurVpn.launch(i) }     // fenêtre système de demande VPN
+                if (it && !Pare.autorise(c)) demanderVpn()     // fenêtre système de demande VPN
             }
-            Autorisation("Autorisation VPN (pare-feu local)", okVpn) { VpnService.prepare(c)?.let { i -> lanceurVpn.launch(i) } }
+            Autorisation("Autorisation VPN (pare-feu local)", okVpn) { demanderVpn() }
+            ServiceVpn.erreur?.let { Text("Le pare-feu n'a pas pu démarrer : $it", fontSize = 12.sp, color = Color(0xFFB91C1C), modifier = Modifier.padding(top = 4.dp)) }
             Text(if (ServiceVpn.actif) "Pare-feu en cours : les applications bloquées n'ont plus Internet." else "Aucun message ne sort ni n'entre : tout ce qui attend arrive à la fin de la plage. Ce n'est pas un vrai VPN : rien ne quitte le téléphone. Il remplace un autre VPN s'il y en a un.",
                 fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
         }

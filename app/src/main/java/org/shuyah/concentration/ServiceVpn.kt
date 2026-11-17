@@ -16,9 +16,12 @@ class ServiceVpn : VpnService() {
     private var lecteur: Thread? = null
 
     /** (Re)crée le tunnel à chaque démarrage : la liste des applications peut avoir changé. */
+    override fun onCreate() { super.onCreate(); Plantage.installer(this) }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         instance = this
-        ouvrir()
+        // Aucune erreur du pare-feu ne doit faire planter l'application : on la garde (écran « Niveau 3 ») et on s'arrête proprement
+        try { ouvrir() } catch (e: Throwable) { erreur = "${e.javaClass.simpleName} : ${e.message}"; actif = false; fermerTunnel(); stopSelf() }
         return START_STICKY
     }
 
@@ -36,11 +39,15 @@ class ServiceVpn : VpnService() {
         val t = try { b.establish() } catch (e: Exception) { null }
         if (t == null) { actif = false; stopSelf(); return }              // autorisation VPN retirée
         tunnel = t
-        actif = true
+        actif = true; erreur = null
         // Lecture et abandon des paquets (sinon la file du tunnel se remplit) ; l'arrêt du tunnel interrompt la lecture
+        // TOUT le fil est protégé (avant, la création du flux était hors du « try » : une erreur là, ou un tunnel refermé par un redémarrage rapide du service,
+        // faisait planter toute l'application, car une exception non rattrapée dans UN fil tue le processus entier)
         lecteur = Thread {
-            val entree = FileInputStream(t.fileDescriptor); val tampon = ByteArray(32767)
-            try { while (entree.read(tampon) >= 0) { /* paquet jeté */ } } catch (e: Exception) { /* tunnel fermé */ }
+            try {
+                val entree = FileInputStream(t.fileDescriptor); val tampon = ByteArray(32767)
+                while (entree.read(tampon) >= 0) { /* paquet jeté */ }
+            } catch (e: Throwable) { /* tunnel fermé */ }
         }.also { it.isDaemon = true; it.start() }
     }
 
@@ -61,5 +68,7 @@ class ServiceVpn : VpnService() {
         /** Vrai quand le tunnel est ouvert (les applications bloquées n'ont plus Internet). */
         @Volatile var actif = false
         @Volatile var instance: ServiceVpn? = null
+        /** Dernière erreur du pare-feu (affichée dans l'écran « Niveau 3 ») ; null si tout va bien. */
+        @Volatile var erreur: String? = null
     }
 }
