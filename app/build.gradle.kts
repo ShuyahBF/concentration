@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 42
-        versionName = "1.41"
+        versionCode = 43
+        versionName = "1.42"
         // Fichier brut : concentration-<version>-<saveur>-release.apk, livré sous le nom concentration-<version>[-sms].apk (sans « debug » ni « release »)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Date et heure de compilation, affichées en bas de l'écran principal.
@@ -90,6 +90,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Empreinte digitale (verrou de l'application et code secret mémorisé)
     implementation("androidx.biometric:biometric:1.1.0")
+    // CORRECTIF DU PLANTAGE DU VPN (1.42) : « biometric 1.1.0 » amène un très vieux composant « fragment » (1.2.x), dont l'activité refuse les codes de demande
+    // des fenêtres système modernes (« Can only use lower 16 bits for requestCode »). Chaque rememberLauncherForActivityResult (VPN, autorisations, fichier, dictée) plantait.
+    // On impose un composant récent.
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     testImplementation("junit:junit:4.13.2")
 }

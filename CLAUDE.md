@@ -64,3 +64,6 @@ Les règles permanentes du propriétaire (commits, version, commentaires, secret
 
 ## Plantages (1.41, 17/11/2026)
 - `Plantage.kt` garde le détail de tout plantage (pile d'appels, modèle, Android) et l'écran principal l'affiche avec « Copier » ; le démarrage du pare-feu (VPN) ne peut plus faire planter l'application (erreur gardée dans `ServiceVpn.erreur`, fil de lecture entièrement protégé).
+
+## Plantage du VPN : cause trouvée (1.42, 17/11/2026)
+- Message réel relevé sur le téléphone du propriétaire : « IllegalArgumentException : Can only use lower 16 bits for requestCode ». Cause : `androidx.biometric:biometric:1.1.0` ramène `androidx.fragment:fragment:1.2.5`, dont `FragmentActivity` refuse les codes de demande (> 16 bits) des fenêtres système modernes ; TOUT `rememberLauncherForActivityResult` (VPN, autorisations, fichier, dictée) plantait. Correctif : `androidx.fragment:fragment-ktx:1.8.2` dans `app/build.gradle.kts`. À vérifier après toute mise à jour de dépendances : `gradle :app:dependencies | grep androidx.fragment:fragment:` doit montrer une version ≥ 1.3.
