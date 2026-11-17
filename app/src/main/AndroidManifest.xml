@@ -12,6 +12,9 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Enregistrement d'écran de débogage (icône discrète) : service au premier plan de type « capture d'écran » -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- Niveau 3 : reprise du planning au redémarrage du téléphone et réveils exacts au début / à la fin des plages -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -37,6 +40,11 @@
         <service android:name=".ServiceVpn" android:exported="false" android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter><action android:name="android.net.VpnService" /></intent-filter>
         </service>
+        <!-- Enregistrement d'écran de débogage : service au premier plan (mediaProjection) + partage de la vidéo (FileProvider, un fichier à la fois) -->
+        <service android:name=".ServiceEnregistrementEcran" android:exported="false" android:foregroundServiceType="mediaProjection" />
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.fichiers" android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/chemins_fichiers" />
+        </provider>
         <receiver android:name=".RecepteurReseau" android:exported="false" />
         <receiver android:name=".RecepteurExpiration" android:exported="false" />
         <!-- « J'attends un paiement » : contrôle 30 minutes plus tard, notification si rien n'est arrivé -->
