@@ -16,8 +16,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Règle de version : VERSION +1 à chaque livraison (voir Version.kt).
-        versionCode = 44
-        versionName = "1.43"
+        versionCode = 45
+        versionName = "1.44"
         // Fichier brut : concentration-<version>-<saveur>-release.apk, livré sous le nom concentration-<version>[-sms].apk (sans « debug » ni « release »)
         setProperty("archivesBaseName", "concentration-$versionName")
         // Enregistrement d'écran de débogage (icône discrète) : actif par défaut ; -PsansEnregistrement=true le retire
