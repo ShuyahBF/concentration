@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vidéos de l'enregistrement d'écran de débogage : partagées une à une, effacées au bout de 7 jours -->
+<paths>
+    <external-files-path name="enregistrements" path="Movies/enregistrements/" />
+</paths>

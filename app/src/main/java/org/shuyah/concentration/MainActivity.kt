@@ -1,5 +1,11 @@
 package org.shuyah.concentration
 
+import android.animation.ObjectAnimator
+import android.os.Build
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.TextView
 import android.app.TimePickerDialog
 import android.content.ComponentName
 import android.content.Context
@@ -76,9 +82,71 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         Plantage.installer(this)
         Presence.demarrer(lifecycleScope)
         setContent { MaterialTheme { if (ouvert) Ecran(retour) else Box(Modifier.fillMaxSize().background(BleuNuit)) } }
+        if (BuildConfig.ENREGISTREMENT_ECRAN) installerIconeEnregistrement()   // débogage : icône discrète d'enregistrement vidéo
     }
 
+    // ---- ENREGISTREMENT D'ÉCRAN DE DÉBOGAGE : accord d'Android, puis démarrage du service d'enregistrement (voir EnregistreurEcran.kt)
+    private val demandeEnregistrement = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        val donnees = r.data
+        if (r.resultCode == RESULT_OK && donnees != null) {
+            val depart = Intent(this, ServiceEnregistrementEcran::class.java).setAction(ServiceEnregistrementEcran.ACTION_DEMARRER)
+                .putExtra(ServiceEnregistrementEcran.EXTRA_CODE, r.resultCode).putExtra(ServiceEnregistrementEcran.EXTRA_DONNEES, donnees)
+            startForegroundService(depart)
+        } else android.widget.Toast.makeText(this, "Enregistrement d'écran non autorisé", android.widget.Toast.LENGTH_SHORT).show()
+    }
+    // Android 13 et plus : la notification « enregistrement en cours » doit être autorisée ; la suite est lancée quelle que soit la réponse
+    private var suiteApresNotifications: (() -> Unit)? = null
+    private val demandeNotificationsEnregistrement = registerForActivityResult(ActivityResultContracts.RequestPermission()) { suiteApresNotifications?.invoke(); suiteApresNotifications = null }
+    private var clignotement: ObjectAnimator? = null
+
+    /**
+     * Icône DISCRÈTE de l'enregistrement d'écran (débogage) : un petit rond translucide en bas à gauche, posé AU-DESSUS de tout l'écran (donc visible aussi sous le verrou d'ouverture). Toucher = commencer ; pendant l'enregistrement il devient rouge et clignote ; toucher = arrêter et envoyer la vidéo.
+     */
+    private fun installerIconeEnregistrement() {
+        EnregistreurEcran.nettoyer(this)                                    // vieilles vidéos (plus de 7 jours) effacées
+        val d = resources.displayMetrics.density
+        val discret = android.graphics.Color.parseColor("#66000000")
+        val icone = TextView(this).apply {
+            text = "●"; textSize = 14f; gravity = Gravity.CENTER; setTextColor(android.graphics.Color.WHITE)
+            contentDescription = "Enregistrer l'écran pour le débogage"
+            background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(discret) }
+            alpha = 0.35f
+            setOnClickListener { basculerEnregistrement() }
+        }
+        addContentView(icone, FrameLayout.LayoutParams((30 * d).toInt(), (30 * d).toInt(), Gravity.BOTTOM or Gravity.START).apply { leftMargin = (6 * d).toInt(); bottomMargin = (96 * d).toInt() })
+        EnregistreurEcran.auChangement = { actif, fichier ->
+            // Aspect : rouge et clignotant pendant l'enregistrement ; discret sinon. À la fin, la feuille de partage s'ouvre toute seule.
+            clignotement?.cancel()
+            if (actif) {
+                icone.background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(android.graphics.Color.parseColor("#DC2626")) }
+                clignotement = ObjectAnimator.ofFloat(icone, "alpha", 1f, 0.35f).apply { duration = 900; repeatCount = ObjectAnimator.INFINITE; repeatMode = ObjectAnimator.REVERSE; start() }
+                icone.contentDescription = "Arrêter l'enregistrement d'écran et envoyer la vidéo"
+            } else {
+                icone.background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(discret) }
+                icone.alpha = 0.35f; icone.contentDescription = "Enregistrer l'écran pour le débogage"
+                if (fichier != null) EnregistreurEcran.partager(this, fichier)
+            }
+        }
+    }
+
+    /** Touche de l'icône : arrête l'enregistrement en cours, ou explique puis demande l'accord d'Android pour en commencer un. */
+    private fun basculerEnregistrement() {
+        if (EnregistreurEcran.enCours) {
+            startService(Intent(this, ServiceEnregistrementEcran::class.java).setAction(ServiceEnregistrementEcran.ACTION_ARRETER)); return
+        }
+        android.app.AlertDialog.Builder(this).setTitle("Enregistrer l'écran")
+            .setMessage("Tout ce qui s'affiche à l'écran sera filmé (3 minutes au plus, sans le son), même sur la page de connexion.\n\n" +
+                "Ne tapez pas de mot de passe ni de code secret en clair pendant l'enregistrement.\n\nLa vidéo reste sur ce téléphone : vous choisissez à qui l'envoyer à la fin ; elle est effacée au bout de 7 jours.")
+            .setPositiveButton("Commencer") { _, _ ->
+                val lancer = { demandeEnregistrement.launch((getSystemService(Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }
+                if (Build.VERSION.SDK_INT >= 33) { suiteApresNotifications = lancer; demandeNotificationsEnregistrement.launch(android.Manifest.permission.POST_NOTIFICATIONS) } else lancer()
+            }
+            .setNegativeButton("Annuler", null).show()
+    }
+
+
     override fun onResume() { super.onResume(); retour++ }
+    override fun onDestroy() { EnregistreurEcran.auChangement = null; clignotement?.cancel(); super.onDestroy() }
 }
 
 /** Vrai si l'accès aux notifications est accordé à Concentration. */
