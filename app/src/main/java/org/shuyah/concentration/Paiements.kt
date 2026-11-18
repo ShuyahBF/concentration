@@ -26,7 +26,7 @@ object Paiements {
     private val TRANSACTION = Regex("trans(?:action)?\\s*id\\s*:?\\s*([A-Z]{2}\\d{6}\\.\\d{4}\\.\\d+|[A-Z0-9][A-Z0-9._-]{5,})", RegexOption.IGNORE_CASE)
     private val DATE_TRANSACTION = Regex("^[A-Z]{2}(\\d{2})(\\d{2})(\\d{2})\\.(\\d{2})(\\d{2})\\.")
 
-    private val MOTS_DEPENSE = listOf("vous avez payé", "vous avez paye", "votre paiement", "paiement", "payé", "achat", "retrait", "vous avez envoyé", "vous avez envoye",
+    private val MOTS_DEPENSE = listOf("vous avez payé", "vous avez paye", "votre paiement", "paiement", "payé", "payée", "payee", "achat", "retrait", "vous avez envoyé", "vous avez envoye",
         "envoi de", "transfert de", "transfert vers", "facture", "débit", "debit", "vous avez transféré", "vous avez transfere", "vous avez recharge", "vous avez rechargé")
     private val MOTS_RECETTE = listOf("vous avez reçu", "vous avez recu", "reçu de", "recu de", "dépôt", "depot", "crédit de", "credit de", "versement", "transfert reçu")
     private val MOTS_PROMO = listOf("gagnez", "gagner", "promo", "offre", "bonus", "félicitations", "felicitations", "tentez", "jeu concours", "cliquez")
@@ -106,6 +106,8 @@ object Paiements {
     // ---- Énergie (SONABEL) : même lecture que l'historique d'auRor ----
     // Le SMS DÉTAILLÉ de la SONABEL liste « Tsdaae », « Tde », « TVA » et « Cout energie » (+ « Energie payee : N Kwh ») sans phrase « vous avez payé » ni FCFA :
     // il était donc écarté, et SAWALI ne le recevait jamais. Le montant payé est la ligne « Total » si elle existe, sinon la SOMME énergie + taxes.
+    // Un SMS qui parle de la SONABEL (nom, « Energie payee », « No compteur », kWh) est une dépense d'énergie même sans « payé » ni « reçu » : comme dans auRor, il n'est plus jeté
+    private val RE_ENERGIE = Regex("sonabel|cout energie|energie payee|\\bkwh\\b|no\\.?\\s?compteur")
     private val RE_ENERGIE_DETAIL = Regex("cout energie|\\bkwh\\b")
     private fun sansAccents(s: String) = java.text.Normalizer.normalize(s.lowercase(Locale.ROOT), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
     /** Valeur décimale qui suit une étiquette (« cout energie : 2 636,70 » → 2636.7), 0 si absente. */
@@ -129,9 +131,11 @@ object Paiements {
         val t = corps.lowercase(Locale.ROOT)
         val montant = montantDe(corps) ?: return null
         // Recette testée d'abord : « vous avez reçu » contient des mots ambigus (ex. « envoi » dans un libellé) mais jamais l'inverse
+        val energie = RE_ENERGIE.containsMatchIn(sansAccents(corps))
         val genreTrouve = when {
             MOTS_RECETTE.any { t.contains(it) } -> "RECETTE"
             MOTS_DEPENSE.any { t.contains(it) } -> "DEPENSE"
+            energie -> "DEPENSE"              // SMS de la SONABEL sans mot de sens : dépense d'énergie
             else -> null
         }
         val reference = referenceDe(corps)
@@ -144,6 +148,6 @@ object Paiements {
         // Une vraie transaction dont le sens est indéterminé reste ignorée (prudence) ; un SMS hors décompte est gardé avec le sens « AUTRE »
         if (categorie == ClassificationSms.Categorie.TRANSACTION && genreTrouve == null) return null
         val genre = genreTrouve ?: "AUTRE"
-        return Paiement(adresse, dateDeReference(reference) ?: recuLeMs, genre, montant, tiersDe(corps, genre), soldeDe(corps), corps.trim(), reference, 0, categorie.name)
+        return Paiement(adresse, dateDeReference(reference) ?: recuLeMs, genre, montant, tiersDe(corps, genre).ifBlank { if (energie) "SONABEL" else "" }, soldeDe(corps), corps.trim(), reference, 0, categorie.name)
     }
 }
