@@ -20,6 +20,16 @@ class PaiementsTest {
         assertEquals(15000L, Paiements.analyser("OrangeMoney", "Vous avez payé 15 000 FCFA à SONABEL le 12/11/2026. Frais: 0 FCFA. Nouveau solde: 82 500 FCFA.", 1L)!!.montant)
     }
 
+    @Test fun smsSonabelSansMotDeSens_estGardeCommeDepenseEnergie() {
+        // Ni « payé » ni « reçu » : il était jeté. Comme auRor, il est gardé (dépense « SONABEL ») pour pouvoir être retrouvé par la recherche
+        val a = Paiements.analyser("SONABEL", "SONABEL recharge 5 000 FCFA No compteur 123456", 1L)!!
+        assertEquals("DEPENSE", a.genre); assertEquals(5000L, a.montant); assertEquals("SONABEL", a.tiers); assertEquals("TRANSACTION", a.categorie)
+        // « Energie payee » (sans accent) est un mot de dépense
+        assertEquals("DEPENSE", Paiements.analyser("SONABEL", "Facture 12 000 FCFA Energie payee", 1L)!!.genre)
+        // Un SMS sans rapport avec la SONABEL et sans sens reste ignoré
+        assertNull(Paiements.analyser("Autre", "Montant 1 000 FCFA disponible", 1L))
+    }
+
     @Test fun recette() {
         val p = Paiements.analyser("MOOV", "Vous avez reçu 25.000 F CFA de OUEDRAOGO Awa. Solde: 40 000 F CFA", 1L)!!
         assertEquals("RECETTE", p.genre); assertEquals(25000L, p.montant); assertEquals(40000L, p.soldeApres); assertEquals("OUEDRAOGO Awa", p.tiers)
