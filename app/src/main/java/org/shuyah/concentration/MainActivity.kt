@@ -113,7 +113,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             alpha = 0.92f
             setOnClickListener { basculerEnregistrement() }
         }
-        addContentView(icone, FrameLayout.LayoutParams((46 * d).toInt(), (46 * d).toInt(), Gravity.BOTTOM or Gravity.START).apply { leftMargin = (10 * d).toInt(); bottomMargin = (96 * d).toInt() })
+        addContentView(icone, FrameLayout.LayoutParams((46 * d).toInt(), (46 * d).toInt(), Gravity.BOTTOM or Gravity.START).apply { leftMargin = (10 * d).toInt(); bottomMargin = (10 * d).toInt() })      // tout en bas : le contenu défilé jusqu'à la fin reste AU-DESSUS (marge basse des écrans : 72 dp)
         EnregistreurEcran.auChangement = { actif, fichier ->
             // Aspect : rouge et clignotant pendant l'enregistrement ; discret sinon. À la fin, la feuille de partage s'ouvre toute seule.
             clignotement?.cancel()
@@ -426,7 +426,7 @@ private fun Ecran(retour: Int) {
                 Action(Icons.Filled.Info, "Fiche appli") { ouvrir(c, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + c.packageName))) }
             }
         }
-        Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+        Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 72.dp))   // marge basse : laisse la place au rond d'enregistrement
         } else if (onglet == 1) {
             // ---- Onglet « Réseau mobile » : réglages de l'interrogation des cartes SIM (le résultat s'affiche dans la carte bleue de l'onglet Général) ----
             Section("Réseau mobile", Icons.Filled.SimCard) {
@@ -500,19 +500,19 @@ private fun Ecran(retour: Int) {
                 Text("Le code part en arrière-plan, sans fenêtre, sur la carte choisie (même si ce n'est pas celle d'Internet). Un seul échange : si l'opérateur répond par un menu, saisissez le code complet, ex. *123*1#. Le résultat de chaque carte s'affiche dans l'onglet Général. Sans forfait Internet, l'opérateur répond par une simple phrase : elle est affichée telle quelle. Si l'opérateur répond par SMS (ex. Telecel sans forfait), la notification du SMS reçue dans les 3 minutes après le code est lue et rattachée à la carte (accès aux notifications requis).",
                     fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
             }
-            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 72.dp))   // marge basse : laisse la place au rond d'enregistrement
         } else if (onglet == 2) {
             // ---- 3e onglet « Consommation » : graphique de la consommation Internet estimée entre deux vérifications du solde ----
             OngletConsommation(cartes, tickLecture, maintenant)
-            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 72.dp))   // marge basse : laisse la place au rond d'enregistrement
         } else if (onglet == 3) {
             // ---- 4e onglet « Paiements » : base des SMS de paiement ----
             OngletPaiements(retour, maintenant)
-            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 72.dp))   // marge basse : laisse la place au rond d'enregistrement
         } else {
             // ---- 5e onglet « Agenda » : Google Agenda lié par la passerelle SAWALI (lot 403) ----
             OngletAgenda()
-            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 24.dp))
+            Text(Version.libelle(), fontSize = 12.sp, color = Color(0xFF64748B), modifier = Modifier.padding(bottom = 72.dp))   // marge basse : laisse la place au rond d'enregistrement
         }
     }
     }
@@ -576,7 +576,7 @@ internal fun Pastille(icone: ImageVector, fond: Color, couleur: Color, taille: I
 @Composable
 internal fun Action(icone: ImageVector, legende: String, surAppui: () -> Unit) =
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { surAppui() }) {
-        Pastille(icone, Orange, BleuNuit, 52); Text(legende, fontSize = 12.sp, color = BleuNuit, modifier = Modifier.padding(top = 4.dp))
+        Pastille(icone, Orange, BleuNuit, 52); Text(legende, fontSize = 10.sp, maxLines = 1, color = BleuNuit, modifier = Modifier.padding(top = 4.dp))   // légende réduite : plus de texte coupé ni sur deux lignes
     }
 
 @Composable
