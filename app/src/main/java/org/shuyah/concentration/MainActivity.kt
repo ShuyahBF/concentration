@@ -143,7 +143,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         }
         if (prefs.getBoolean("explication_vue", false)) { demarrer(); return }
         android.app.AlertDialog.Builder(this).setTitle("Enregistrer l'écran")
-            .setMessage("Tout ce qui s'affiche à l'écran sera filmé (3 minutes au plus, sans le son), même sur la page de connexion.\n\n" +
+            .setMessage("Tout ce qui s'affiche à l'écran sera filmé (10 minutes au plus, sans le son), même sur la page de connexion.\n\n" +
                 "Ne tapez pas de mot de passe ni de code secret en clair pendant l'enregistrement.\n\nLa vidéo reste sur ce téléphone : vous choisissez à qui l'envoyer à la fin ; elle est effacée au bout de 7 jours.\n\nCette explication ne sera plus affichée : ensuite, toucher le rond lance directement l'enregistrement.")
             .setPositiveButton("Commencer") { _, _ -> prefs.edit().putBoolean("explication_vue", true).apply(); demarrer() }
             .setNegativeButton("Annuler", null).show()
