@@ -191,16 +191,19 @@ internal fun OngletAgenda() {
                     }
                     val val_ = { ev: Agenda.Evenement -> when (tri?.first) { "titre" -> ev.titre.lowercase(); "lieu" -> ev.lieu.lowercase(); else -> ev.debut } }
                     val triees = tri.let { t -> if (t == null) evenements else evenements.filter { val_(it).isNotEmpty() }.let { l -> if (t.second) l.sortedBy(val_) else l.sortedByDescending(val_) } + evenements.filter { val_(it).isEmpty() } }
-                    triees.forEach { ev ->
-                        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(ev.titre, fontSize = 14.sp, color = BleuNuit)
-                                Text(Agenda.dateAffichee(ev.debut) + if (ev.lieu.isNotBlank()) " · ${ev.lieu}" else "", fontSize = 11.sp, color = Bleu)
+                    // Règle 24 : plus de 30 rendez-vous → la liste défile dans son cadre
+                    ListeBornee(triees.size) {
+                        triees.forEach { ev ->
+                            Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(ev.titre, fontSize = 14.sp, color = BleuNuit)
+                                    Text(Agenda.dateAffichee(ev.debut) + if (ev.lieu.isNotBlank()) " · ${ev.lieu}" else "", fontSize = 11.sp, color = Bleu)
+                                }
+                                IconButton({
+                                    Avis.enCours(c, "Suppression en cours…")
+                                    appel("supprimer", Agenda.corpsSuppression(ev.id)) { r -> Avis.resultat(c, if (r.ok) "Rendez-vous supprimé." else "Suppression impossible : " + r.message()); actualiser(false) }
+                                }, enabled = !occupe) { Icon(Icons.Filled.Delete, contentDescription = "Supprimer ${ev.titre}", tint = Rouge) }
                             }
-                            IconButton({
-                                Avis.enCours(c, "Suppression en cours…")
-                                appel("supprimer", Agenda.corpsSuppression(ev.id)) { r -> Avis.resultat(c, if (r.ok) "Rendez-vous supprimé." else "Suppression impossible : " + r.message()); actualiser(false) }
-                            }, enabled = !occupe) { Icon(Icons.Filled.Delete, contentDescription = "Supprimer ${ev.titre}", tint = Rouge) }
                         }
                     }
                 }

@@ -280,16 +280,19 @@ internal fun OngletPaiements(retour: Int, maintenant: Long) {
             val envoi = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, "Paiements Concentration").putExtra(Intent.EXTRA_TEXT, StatsPaiements.csv(filtrees))
             c.startActivity(Intent.createChooser(envoi, "Partager les paiements affichés (CSV)").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }) { Icon(Icons.Filled.Share, null); Spacer(Modifier.width(6.dp)); Text("Partager en CSV (Excel)") }
-        filtrees.take(affiches).forEach { p ->
-            Row(Modifier.fillMaxWidth().clickable { ouvert = p }.padding(top = 10.dp), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(p.tiers.ifBlank { p.adresse }, fontSize = 14.sp, color = if (p.estTransaction) BleuNuit else GRIS)
-                        PastilleCategorie(p)
+        // Règle 24 : plus de 30 lignes → la liste défile dans son cadre
+        ListeBornee(minOf(filtrees.size, affiches)) {
+            filtrees.take(affiches).forEach { p ->
+                Row(Modifier.fillMaxWidth().clickable { ouvert = p }.padding(top = 10.dp), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(p.tiers.ifBlank { p.adresse }, fontSize = 14.sp, color = if (p.estTransaction) BleuNuit else GRIS)
+                            PastilleCategorie(p)
+                        }
+                        Text(dateHeure(p.recuLeMs) + " · " + StatsPaiements.operateurDe(p) + (p.soldeApres?.let { " · solde " + francs(it) } ?: ""), fontSize = 11.sp, color = GRIS_CLAIR)
                     }
-                    Text(dateHeure(p.recuLeMs) + " · " + StatsPaiements.operateurDe(p) + (p.soldeApres?.let { " · solde " + francs(it) } ?: ""), fontSize = 11.sp, color = GRIS_CLAIR)
+                    Text((if (!p.estTransaction) "" else if (p.genre == "RECETTE") "+ " else "− ") + francs(p.montant), fontSize = 14.sp, color = if (!p.estTransaction) GRIS else if (p.genre == "RECETTE") Vert else Rouge, textAlign = TextAlign.End)
                 }
-                Text((if (!p.estTransaction) "" else if (p.genre == "RECETTE") "+ " else "− ") + francs(p.montant), fontSize = 14.sp, color = if (!p.estTransaction) GRIS else if (p.genre == "RECETTE") Vert else Rouge, textAlign = TextAlign.End)
             }
         }
         if (filtrees.size > affiches) OutlinedButton({ affiches += TAILLE_PAGE }, Modifier.fillMaxWidth().padding(top = 10.dp)) { Icon(Icons.Filled.ExpandMore, null); Spacer(Modifier.width(4.dp)); Text("Afficher plus (${filtrees.size - affiches} restants)") }
