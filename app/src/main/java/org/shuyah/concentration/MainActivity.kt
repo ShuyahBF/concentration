@@ -134,13 +134,18 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         if (EnregistreurEcran.enCours) {
             startService(Intent(this, ServiceEnregistrementEcran::class.java).setAction(ServiceEnregistrementEcran.ACTION_ARRETER)); return
         }
+        // Lot « direct » : l'explication n'est montrée qu'UNE SEULE FOIS ; ensuite le rond lance DIRECTEMENT l'enregistrement
+        // (il ne reste que la fenêtre de consentement d'Android, imposée par le système à chaque enregistrement).
+        val prefs = getSharedPreferences("enregistrement_ecran", Context.MODE_PRIVATE)
+        val demarrer = {
+            val lancer = { demandeEnregistrement.launch((getSystemService(Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }
+            if (Build.VERSION.SDK_INT >= 33) { suiteApresNotifications = lancer; demandeNotificationsEnregistrement.launch(android.Manifest.permission.POST_NOTIFICATIONS) } else lancer()
+        }
+        if (prefs.getBoolean("explication_vue", false)) { demarrer(); return }
         android.app.AlertDialog.Builder(this).setTitle("Enregistrer l'écran")
             .setMessage("Tout ce qui s'affiche à l'écran sera filmé (3 minutes au plus, sans le son), même sur la page de connexion.\n\n" +
-                "Ne tapez pas de mot de passe ni de code secret en clair pendant l'enregistrement.\n\nLa vidéo reste sur ce téléphone : vous choisissez à qui l'envoyer à la fin ; elle est effacée au bout de 7 jours.")
-            .setPositiveButton("Commencer") { _, _ ->
-                val lancer = { demandeEnregistrement.launch((getSystemService(Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }
-                if (Build.VERSION.SDK_INT >= 33) { suiteApresNotifications = lancer; demandeNotificationsEnregistrement.launch(android.Manifest.permission.POST_NOTIFICATIONS) } else lancer()
-            }
+                "Ne tapez pas de mot de passe ni de code secret en clair pendant l'enregistrement.\n\nLa vidéo reste sur ce téléphone : vous choisissez à qui l'envoyer à la fin ; elle est effacée au bout de 7 jours.\n\nCette explication ne sera plus affichée : ensuite, toucher le rond lance directement l'enregistrement.")
+            .setPositiveButton("Commencer") { _, _ -> prefs.edit().putBoolean("explication_vue", true).apply(); demarrer() }
             .setNegativeButton("Annuler", null).show()
     }
 
