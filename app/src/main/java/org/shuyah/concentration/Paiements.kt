@@ -103,7 +103,29 @@ object Paiements {
     }
 
     /** Analyse un SMS : le paiement qu'il contient, ou null (promotion, pas de montant, sens indéterminé). La date du numéro de transaction, si elle existe, remplace l'heure de réception. */
+    // ---- Énergie (SONABEL) : même lecture que l'historique d'auRor ----
+    // Le SMS DÉTAILLÉ de la SONABEL liste « Tsdaae », « Tde », « TVA » et « Cout energie » (+ « Energie payee : N Kwh ») sans phrase « vous avez payé » ni FCFA :
+    // il était donc écarté, et SAWALI ne le recevait jamais. Le montant payé est la ligne « Total » si elle existe, sinon la SOMME énergie + taxes.
+    private val RE_ENERGIE_DETAIL = Regex("cout energie|\\bkwh\\b")
+    private fun sansAccents(s: String) = java.text.Normalizer.normalize(s.lowercase(Locale.ROOT), java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "")
+    /** Valeur décimale qui suit une étiquette (« cout energie : 2 636,70 » → 2636.7), 0 si absente. */
+    private fun decimalApres(t: String, re: Regex): Double =
+        re.find(t)?.groupValues?.get(1)?.replace(Regex("\\s"), "")?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
+    /** Montant payé d'une facture d'énergie (FCFA entiers), ou null si le SMS n'a pas cette forme. */
+    fun montantEnergie(texte: String): Long? {
+        val t = sansAccents(texte)
+        val total = decimalApres(t, Regex("\\btotal\\s*(?:a payer|paye)?\\s*:\\s*(\\d[\\d.,\\s]*)"))
+        if (total > 0) return Math.round(total)
+        val cout = decimalApres(t, Regex("cout energie\\s*:\\s*(\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:,\\d+)?|\\d[\\d.,]*)"))
+        if (cout <= 0) return null
+        return Math.round(cout + decimalApres(t, Regex("tsdaae\\s*:\\s*(\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:,\\d+)?|\\d[\\d.,]*)")) + decimalApres(t, Regex("\\btde\\s*:\\s*(\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:,\\d+)?|\\d[\\d.,]*)")) + decimalApres(t, Regex("\\btva\\s*:\\s*(\\d{1,3}(?:[ \\u00a0]\\d{3})+(?:,\\d+)?|\\d[\\d.,]*)")))
+    }
+
     fun analyser(adresse: String, corps: String, recuLeMs: Long): Paiement? {
+        // SMS détaillé de la SONABEL : une dépense d'énergie, bénéficiaire « SONABEL »
+        if (RE_ENERGIE_DETAIL.containsMatchIn(sansAccents(corps))) montantEnergie(corps)?.takeIf { it > 0 }?.let { m ->
+            return Paiement(adresse, recuLeMs, "DEPENSE", m, "SONABEL", null, corps.trim(), referenceDe(corps), 0, ClassificationSms.Categorie.TRANSACTION.name)
+        }
         val t = corps.lowercase(Locale.ROOT)
         val montant = montantDe(corps) ?: return null
         // Recette testée d'abord : « vous avez reçu » contient des mots ambigus (ex. « envoi » dans un libellé) mais jamais l'inverse
