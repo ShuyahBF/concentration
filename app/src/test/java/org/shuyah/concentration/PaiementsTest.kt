@@ -10,6 +10,16 @@ class PaiementsTest {
         assertEquals("DEPENSE", p.genre); assertEquals(15000L, p.montant); assertEquals(82500L, p.soldeApres); assertEquals("SONABEL", p.tiers)
     }
 
+    @Test fun factureDetailleeSonabel_totalEgalSommeEnergieEtTaxes() {
+        // 160,30 + 53 + 0 + 2 636,70 = 2 850 FCFA (exemple du propriétaire) ; aucune phrase « vous avez payé » ni FCFA : ce SMS était écarté
+        val p = Paiements.analyser("SONABEL", "Tsdaae: 160,30 Tde: 53 TVA: 0 Cout energie: 2 636,70 Energie payee: 25 Kwh No compteur 123456", 1L)!!
+        assertEquals("DEPENSE", p.genre); assertEquals(2850L, p.montant); assertEquals("SONABEL", p.tiers); assertEquals("TRANSACTION", p.categorie)
+        // La ligne « Total » prime quand elle existe
+        assertEquals(3000L, Paiements.analyser("SONABEL", "Cout energie: 2 000 TVA: 100 Total: 3 000 Kwh 12", 1L)!!.montant)
+        // Un SMS ordinaire de l'opérateur n'est pas touché
+        assertEquals(15000L, Paiements.analyser("OrangeMoney", "Vous avez payé 15 000 FCFA à SONABEL le 12/11/2026. Frais: 0 FCFA. Nouveau solde: 82 500 FCFA.", 1L)!!.montant)
+    }
+
     @Test fun recette() {
         val p = Paiements.analyser("MOOV", "Vous avez reçu 25.000 F CFA de OUEDRAOGO Awa. Solde: 40 000 F CFA", 1L)!!
         assertEquals("RECETTE", p.genre); assertEquals(25000L, p.montant); assertEquals(40000L, p.soldeApres); assertEquals("OUEDRAOGO Awa", p.tiers)
