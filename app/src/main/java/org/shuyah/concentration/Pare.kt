@@ -24,9 +24,22 @@ object Pare {
     fun synchroniser(c: Context, forcer: Boolean = false) {
         Sons.controler(c)                                        // son si l'état a changé (début, fin, pause, reprise)
         try {
-            if (voulu(c) && autorise(c)) { if (forcer || !ServiceVpn.actif) c.startService(Intent(c, ServiceVpn::class.java)) }
-            else ServiceVpn.instance?.fermer()
-        } catch (e: Exception) { /* démarrage refusé par le système : réessayé au prochain contrôle */ }
+            val voulu = voulu(c); val autorise = autorise(c)
+            if (voulu && autorise) {
+                if (forcer || !ServiceVpn.actif) {
+                    JournalPare.noter(c, "Démarrage du tunnel demandé" + if (forcer) " (liste d'applications modifiée)" else " (le pare-feu est voulu et n'est pas ouvert)", sansRepeter = true)
+                    c.startService(Intent(c, ServiceVpn::class.java))
+                }
+            } else {
+                // Voulu mais pas autorisé : la cause la plus fréquente de « blocages en cours mais pas d'icône VPN »
+                if (voulu && !autorise) JournalPare.noter(c, "Pare-feu voulu mais autorisation VPN absente : aucun tunnel, donc pas d'icône VPN (autre VPN actif ou autorisation retirée)", sansRepeter = true)
+                ServiceVpn.instance?.fermer()
+            }
+        } catch (e: Exception) {
+            // Démarrage refusé par le système (souvent : application en arrière-plan) : réessayé au prochain contrôle, mais DIT, plus avalé en silence
+            ServiceVpn.erreur = "Démarrage refusé par le système : ${e.javaClass.simpleName} ${e.message}"
+            JournalPare.noter(c, "Démarrage du tunnel REFUSÉ par le système : ${e.javaClass.simpleName} ${e.message}", sansRepeter = true)
+        }
     }
 
     /** Programme le réveil du prochain changement d'état (début/fin de plage ou fin de pause). */

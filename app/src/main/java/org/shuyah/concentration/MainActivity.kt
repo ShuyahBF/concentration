@@ -406,6 +406,23 @@ private fun Ecran(retour: Int) {
             ServiceVpn.erreur?.let { Text("Le pare-feu n'a pas pu démarrer : $it", fontSize = 12.sp, color = Color(0xFFB91C1C), modifier = Modifier.padding(top = 4.dp)) }
             Text(if (ServiceVpn.actif) "Pare-feu en cours : les applications bloquées n'ont plus Internet." else "Aucun message ne sort ni n'entre : tout ce qui attend arrive à la fin de la plage. Ce n'est pas un vrai VPN : rien ne quitte le téléphone. Il remplace un autre VPN s'il y en a un.",
                 fontSize = 12.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 6.dp))
+            // Journal du pare-feu (v1.52) : ce que le pare-feu a fait ou refusé, pour comprendre pourquoi l'icône VPN (clé) manque. Relu toutes les 20 s et à « Actualiser ».
+            val journal = remember(tickVpn, maintenant) { JournalPare.lignes(c) }
+            Text("Journal du pare-feu (${journal.size})", fontSize = 13.sp, color = BleuNuit, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+            if (journal.isEmpty()) Text("Rien noté pour l'instant.", fontSize = 12.sp, color = Color(0xFF475569))
+            else journal.takeLast(8).reversed().forEach { Text(it, fontSize = 11.sp, color = Color(0xFF334155), modifier = Modifier.padding(top = 2.dp)) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 6.dp)) {
+                Button(onClick = {
+                    android.widget.Toast.makeText(c, "Relecture du journal en cours…", android.widget.Toast.LENGTH_SHORT).show()
+                    tickVpn++
+                    android.widget.Toast.makeText(c, "Journal relu : ${JournalPare.lignes(c).size} ligne(s)", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Icon(Icons.Filled.Refresh, null); Text("  Actualiser") }
+                Button(onClick = {
+                    val tout = JournalPare.lignes(c).joinToString("\n").ifBlank { "(journal vide)" }
+                    (c.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("Journal du pare-feu", tout))
+                    android.widget.Toast.makeText(c, "Journal copié", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Icon(Icons.Filled.ContentCopy, null); Text("  Copier") }
+            }
         }
 
         // ---- Xiaomi : rester actif en arrière-plan ----

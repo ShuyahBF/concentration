@@ -36,6 +36,10 @@ class ServiceVerrou : AccessibilityService() {
 
     /** Le bouton d'accessibilité (Xiaomi : bouton rond sur le bord de l'écran) ouvre la fenêtre « État » de Concentration. */
     override fun onServiceConnected() {
+        // (Re)démarrage du service d'accessibilité (le système le relance après l'avoir arrêté : économiseur de batterie, mise à jour…) : le pare-feu est remis
+        // dans le bon état TOUT DE SUITE, sans attendre un changement de fenêtre (v1.52)
+        JournalPare.noter(this, "Service d'accessibilité (re)démarré : contrôle immédiat du pare-feu", sansRepeter = true)
+        Thread { try { Pare.appliquer(applicationContext) } catch (e: Throwable) { } }.start()
         try {
             accessibilityButtonController.registerAccessibilityButtonCallback(object : android.accessibilityservice.AccessibilityButtonController.AccessibilityButtonCallback() {
                 override fun onClicked(controller: android.accessibilityservice.AccessibilityButtonController) {
