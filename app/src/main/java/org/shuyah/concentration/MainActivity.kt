@@ -363,6 +363,8 @@ private fun Ecran(retour: Int) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp).clickable { choix = if (toutSauf) "autorisees" else "bloquees" }) {
                 Pastille(Icons.Filled.Edit, Orange, BleuNuit, 40)
                 Text(if (toutSauf) "Choisir les applications autorisées" else "Choisir les applications à bloquer", color = BleuNuit, modifier = Modifier.padding(start = 12.dp))
+                // Nombre d'applications de la liste, en bleu et en gras, à côté du libellé
+                Text("${if (toutSauf) autorisees.size else bloquees.size}", color = Bleu, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(start = 10.dp))
             }
         }
 
@@ -645,18 +647,36 @@ private fun ChoixApplications(titre: String, selection: Set<String>, surFermetur
         text = {
             Column {
                 OutlinedTextField(recherche, { recherche = it }, singleLine = true, placeholder = { Text("Rechercher") }, modifier = Modifier.fillMaxWidth())
+                // Deux groupes : applications cochées (bloquées / autorisées) EN HAUT, non cochées EN DESSOUS.
+                // La liste se recalcule à chaque case : une application qu'on ajoute remonte, une application qu'on retire descend.
+                val visibles = applis.filter { it.nom.contains(recherche, ignoreCase = true) }
+                val cochees = visibles.filter { it.paquet in coches }
+                val nonCochees = visibles.filter { it.paquet !in coches }
+                val mot = if (titre.contains("autoris", ignoreCase = true)) "autorisée" else "bloquée"
                 LazyColumn(Modifier.heightIn(max = 380.dp)) {
-                    items(applis.filter { it.nom.contains(recherche, ignoreCase = true) }, key = { it.paquet }) { a ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { coches = if (a.paquet in coches) coches - a.paquet else coches + a.paquet }.padding(vertical = 6.dp)) {
-                            IconeAppli(a.paquet)
-                            Text(a.nom, Modifier.weight(1f).padding(horizontal = 10.dp), fontSize = 15.sp)
-                            Checkbox(a.paquet in coches, { coches = if (it) coches + a.paquet else coches - a.paquet })
-                        }
+                    item(key = "entete-cochees") {
+                        Text("${mot.replaceFirstChar { it.uppercase() }}s (${cochees.size})", fontWeight = FontWeight.Bold, color = Bleu, fontSize = 14.sp, modifier = Modifier.padding(vertical = 6.dp))
                     }
+                    items(cochees, key = { it.paquet }) { a -> LigneChoixAppli(a, true) { coches = coches - a.paquet } }
+                    item(key = "entete-non-cochees") {
+                        HorizontalDivider(Modifier.padding(top = 6.dp))
+                        Text("Non ${mot}s (${nonCochees.size})", fontWeight = FontWeight.Bold, color = Color(0xFF475569), fontSize = 14.sp, modifier = Modifier.padding(vertical = 6.dp))
+                    }
+                    items(nonCochees, key = { it.paquet }) { a -> LigneChoixAppli(a, false) { coches = coches + a.paquet } }
                 }
             }
         },
         confirmButton = { Action(Icons.Filled.Check, "Valider") { surValidation(coches) } },
         dismissButton = { Action(Icons.Filled.Close, "Annuler") { surFermeture() } }
     )
+}
+
+/** Une ligne de la fenêtre de choix des applications : icône, nom et case ; « basculer » ajoute ou retire l'application de la sélection. */
+@Composable
+private fun LigneChoixAppli(a: Appli, cochee: Boolean, basculer: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { basculer() }.padding(vertical = 6.dp)) {
+        IconeAppli(a.paquet)
+        Text(a.nom, Modifier.weight(1f).padding(horizontal = 10.dp), fontSize = 15.sp)
+        Checkbox(cochee, { basculer() })
+    }
 }
