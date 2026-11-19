@@ -87,3 +87,11 @@ Les règles permanentes du propriétaire (commits, version, commentaires, secret
 
 ## Journal du pare-feu (1.52, 19/11/2026)
 - `JournalPare.kt` : tout événement du pare-feu (démarrage, tunnel ouvert ou non et pourquoi, refus du système, VPN repris par un autre, arrêt) y est noté (30 lignes), affiché au Niveau 3 avec « Actualiser » et « Copier ». Un refus du pare-feu ne doit JAMAIS être avalé en silence : il passe par `JournalPare.noter` et `ServiceVpn.erreur`.
+
+## Liste des applications à bloquer et journal du pare-feu (1.53, propriétaire, 19/11/2026)
+- Fenêtre de choix des applications : les applications COCHÉES (bloquées, ou autorisées en mode « toutes sauf ») sont EN HAUT sous « Bloquées (n) », les autres EN DESSOUS sous « Non bloquées (n) » ; cocher une application la fait remonter, la décocher la fait redescendre. Page principale : le nombre d'applications de la liste est affiché en bleu et en gras à côté de « Choisir les applications à bloquer ».
+- Journal du pare-feu : « fermé par le système » n'est écrit que pour une vraie fermeture ; un remplacement voulu du tunnel (liste modifiée, redémarrage du service) n'en écrit pas (`ServiceVpn.fermerTunnel` oublie le tunnel AVANT de le fermer). Au redémarrage du téléphone, le service d'accessibilité rouvre le tunnel en 5 s (journal du 19/11/2026).
+
+## Signature et publication des APK : clé permanente seulement, publication directe dans ShuyahStore (règle du propriétaire, 19/11/2026)
+- Plus JAMAIS la clé de test (`-PsignerAvecCleLocale=true`) sauf demande EXPRESSE ; APK signé avec la clé PERMANENTE de ShuyahStore (variables `ANDROID_KEYSTORE_*`), certificat vérifié avec `apksigner verify --print-certs` (« CN=ShuyahStore »). Fichier de clé absent : ne construire aucun APK de remplacement, le dire au propriétaire.
+- Publication DIRECTE dans ShuyahStore à chaque livraison (`POST /api/dev/depot`, jeton injecté par le secret réseau), saveur « standard » ; le compte rendu dit si elle est publiée ou en validation.

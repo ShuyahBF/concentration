@@ -63,8 +63,11 @@ class ServiceVpn : VpnService() {
     }
 
     private fun fermerTunnel() {
-        try { tunnel?.close() } catch (e: Exception) {}
+        // On oublie d'abord le tunnel, puis on le ferme : le fil de lecture voit alors « tunnel !== t » et n'écrit pas
+        // « fermé par le système » pour une fermeture voulue par l'application (remplacement, fin de plage…)
+        val ancien = tunnel
         tunnel = null; lecteur = null
+        try { ancien?.close() } catch (e: Exception) {}
     }
 
     /** Ferme le tunnel et arrête le service (fin de plage, pause, interrupteur éteint). */
