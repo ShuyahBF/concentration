@@ -84,3 +84,6 @@ Les règles permanentes du propriétaire (commits, version, commentaires, secret
   d'attention, reste à faire. Jamais de secret (clé, mot de passe, chaîne de connexion) dans l'e-mail.
 - Charger l'outil Gmail avec ToolSearch AVANT de dire qu'il manque ; s'il est vraiment indisponible, le dire dans le chat et ne pas clore la livraison.
 
+
+## Journal du pare-feu (1.52, 19/11/2026)
+- `JournalPare.kt` : tout événement du pare-feu (démarrage, tunnel ouvert ou non et pourquoi, refus du système, VPN repris par un autre, arrêt) y est noté (30 lignes), affiché au Niveau 3 avec « Actualiser » et « Copier ». Un refus du pare-feu ne doit JAMAIS être avalé en silence : il passe par `JournalPare.noter` et `ServiceVpn.erreur`.

@@ -21,7 +21,10 @@ class ServiceVpn : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         instance = this
         // Aucune erreur du pare-feu ne doit faire planter l'application : on la garde (écran « Niveau 3 ») et on s'arrête proprement
-        try { ouvrir() } catch (e: Throwable) { erreur = "${e.javaClass.simpleName} : ${e.message}"; actif = false; fermerTunnel(); stopSelf() }
+        try { ouvrir() } catch (e: Throwable) {
+            erreur = "${e.javaClass.simpleName} : ${e.message}"; actif = false; fermerTunnel(); stopSelf()
+            JournalPare.noter(this, "ERREUR à l'ouverture du tunnel : $erreur")
+        }
         return START_STICKY
     }
 
@@ -31,15 +34,21 @@ class ServiceVpn : VpnService() {
         // concernerait TOUTES les applications ; on n'ouvre donc rien si la liste est vide.
         val libres = Applications.toujoursLibres(this)
         val apps = Applications.lancables(this).map { it.paquet }.filter { Applications.estBloquee(this, it, libres) }
-        if (apps.isEmpty()) { actif = false; stopSelf(); return }
+        if (apps.isEmpty()) { actif = false; JournalPare.noter(this, "Aucune application à couper (liste vide) : tunnel non ouvert, donc pas d'icône VPN"); stopSelf(); return }
         val b = Builder().setSession("Concentration").setBlocking(true)
             .addAddress("10.255.255.1", 32).addRoute("0.0.0.0", 0)      // IPv4 : tout le trafic de ces applications vers le tunnel
             .addAddress("fd00::1", 128).addRoute("::", 0)                // IPv6 : idem
         apps.forEach { try { b.addAllowedApplication(it) } catch (e: Exception) { /* application désinstallée entre-temps */ } }
-        val t = try { b.establish() } catch (e: Exception) { null }
-        if (t == null) { actif = false; stopSelf(); return }              // autorisation VPN retirée
+        val t = try { b.establish() } catch (e: Exception) { JournalPare.noter(this, "Le système a refusé d'ouvrir le tunnel : ${e.javaClass.simpleName} ${e.message}"); null }
+        if (t == null) {
+            // Autorisation VPN retirée, ou un autre VPN a pris la place (Android n'en admet qu'un à la fois)
+            actif = false; erreur = "Tunnel non ouvert : autorisation VPN absente ou autre VPN actif"
+            JournalPare.noter(this, "Tunnel non ouvert : autorisation VPN absente ou autre VPN actif (réaccordez-la : Niveau 3 → Autorisation VPN)")
+            stopSelf(); return
+        }
         tunnel = t
         actif = true; erreur = null
+        JournalPare.noter(this, "Tunnel ouvert pour ${apps.size} application(s) : l'icône VPN (clé) doit s'afficher")
         // Lecture et abandon des paquets (sinon la file du tunnel se remplit) ; l'arrêt du tunnel interrompt la lecture
         // TOUT le fil est protégé (avant, la création du flux était hors du « try » : une erreur là, ou un tunnel refermé par un redémarrage rapide du service,
         // faisait planter toute l'application, car une exception non rattrapée dans UN fil tue le processus entier)
@@ -48,6 +57,8 @@ class ServiceVpn : VpnService() {
                 val entree = FileInputStream(t.fileDescriptor); val tampon = ByteArray(32767)
                 while (entree.read(tampon) >= 0) { /* paquet jeté */ }
             } catch (e: Throwable) { /* tunnel fermé */ }
+            // Fin de la lecture alors que le service se croit encore actif : le système a fermé le tunnel (autre VPN, économiseur de batterie…)
+            if (tunnel === t && actif) JournalPare.noter(this@ServiceVpn, "Le tunnel a été fermé par le système alors que le pare-feu était actif")
         }.also { it.isDaemon = true; it.start() }
     }
 
@@ -57,12 +68,12 @@ class ServiceVpn : VpnService() {
     }
 
     /** Ferme le tunnel et arrête le service (fin de plage, pause, interrupteur éteint). */
-    fun fermer() { fermerTunnel(); actif = false; stopSelf() }
+    fun fermer() { JournalPare.noter(this, "Fermeture demandée (fin de plage, pause ou interrupteur éteint)", sansRepeter = true); fermerTunnel(); actif = false; stopSelf() }
 
     /** L'utilisateur coupe le VPN dans les réglages ou un autre VPN le remplace. */
-    override fun onRevoke() { fermer(); super.onRevoke() }
+    override fun onRevoke() { JournalPare.noter(this, "VPN repris par le système ou par une autre application (onRevoke) : plus d'icône VPN"); fermer(); super.onRevoke() }
 
-    override fun onDestroy() { fermerTunnel(); actif = false; if (instance === this) instance = null; super.onDestroy() }
+    override fun onDestroy() { JournalPare.noter(this, "Service du pare-feu arrêté (onDestroy)", sansRepeter = true); fermerTunnel(); actif = false; if (instance === this) instance = null; super.onDestroy() }
 
     companion object {
         /** Vrai quand le tunnel est ouvert (les applications bloquées n'ont plus Internet). */

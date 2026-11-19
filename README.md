@@ -2,6 +2,12 @@
 
 Application personnelle pour se concentrer : pendant des **plages horaires** (par défaut 20:00 → 07:00, tous les jours), elle retarde les notifications de WhatsApp / WhatsApp Business et peut verrouiller des applications, en ne laissant que celles que l'on autorise (par exemple Claude).
 
+## Version 1.52 — Journal du pare-feu (icône VPN absente alors que les blocages sont en cours)
+- Constat du propriétaire (19/11/2026) : l'icône VPN (la clé) ne s'affiche plus alors que les blocages sont déjà en cours. Le pare-feu (niveau 3) peut ne pas s'ouvrir sans le dire : autorisation VPN absente ou reprise par un autre VPN, démarrage refusé par le système (application en arrière-plan), service tué.
+- Nouveau **journal du pare-feu** (écran principal, Niveau 3, « Actualiser » et « Copier ») : démarrage demandé, tunnel ouvert (nombre d'applications), tunnel non ouvert et pourquoi, VPN repris par une autre application, démarrage refusé par le système, service arrêté. Avant, plusieurs refus étaient avalés sans trace.
+- Le service d'accessibilité, quand le système le relance, remet **tout de suite** le pare-feu dans le bon état (avant : au prochain changement de fenêtre, au plus une fois par minute).
+- La cause exacte n'est pas établie : après un nouvel incident, lire le journal (Niveau 3) et me le transmettre.
+
 ## Version 1.20 — pictogrammes sur toutes les actions (règle 15)
 - Chaque action de l'onglet Paiements porte son pictogramme (Réinitialiser, Afficher plus, Fermer, Supprimer grisé…).
 - Plus d'enregistrement « deviné » : l'interrupteur d'envoi automatique indique « Enregistré automatiquement dès que vous basculez » ; adresse, identifiant et clé s'enregistrent par le bouton « Enregistrer et envoyer maintenant », dit explicitement.
