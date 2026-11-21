@@ -20,6 +20,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <queries><package android:name="com.shuyah.store" /></queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
