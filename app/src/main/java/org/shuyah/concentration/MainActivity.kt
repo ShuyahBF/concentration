@@ -229,6 +229,7 @@ private fun Ecran(retour: Int) {
     val ongletsPictos = listOf(
         Triple(Icons.Filled.CenterFocusStrong, "Général", Bleu), Triple(Icons.Filled.SignalCellularAlt, "Réseau mobile", Bleu), Triple(Icons.Filled.DataUsage, "Consommation", Bleu),
         Triple(Icons.Filled.AccountBalanceWallet, "Paiements", Bleu), Triple(Icons.Filled.CalendarMonth, "Agenda", Bleu))
+    BandeauMiseAJour()      // nouvelle version publiée dans ShuyahStore (v1.54)
     TabRow(selectedTabIndex = onglet, containerColor = Color.White, contentColor = Bleu) {
         ongletsPictos.forEachIndexed { i, (picto, titre, _) ->
             Tab(selected = onglet == i, onClick = { onglet = i }, modifier = Modifier.semantics { contentDescription = "Onglet $titre" },
