@@ -428,6 +428,9 @@ private fun Ecran(retour: Int) {
             }
         }
 
+        // ---- Copie de sécurité chiffrée sur le téléphone (1.56) ----
+        SectionCopieLocale()
+
         // ---- Xiaomi : rester actif en arrière-plan ----
         Section("Xiaomi : pour que ça reste actif", Icons.Filled.PhoneAndroid) {
             // 1. Batterie : un appui ouvre la fenêtre du système « Autoriser Concentration à toujours fonctionner en arrière-plan ? » → Autoriser
