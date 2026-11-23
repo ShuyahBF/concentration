@@ -71,9 +71,12 @@ internal fun SectionCopieLocale() {
         Text("Enregistre TOUTES les données (paiements lus dans les SMS, mesures de consommation, réglages) dans un fichier chiffré par une phrase secrète, à l'endroit de votre choix (Documents, carte SD…). Il reste sur le téléphone même si l'application est désinstallée. Sans la phrase, personne ne peut le lire.",
             fontSize = 13.sp, color = BleuNuit)
         Text("Dernière copie : " + if (derniere <= 0) "jamais" else SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRANCE).format(Date(derniere)), fontSize = 13.sp, color = Color(0xFF475569), modifier = Modifier.padding(top = 4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-            Button(enabled = !occupe, onClick = { phrase = ""; confirmation = ""; dialogue = "creer" }) { Icon(Icons.Filled.Save, null); Text("  Enregistrer une copie") }
-            Button(enabled = !occupe, onClick = { ouvrirFichier.launch(arrayOf("*/*")) }) { Icon(Icons.Filled.FolderOpen, null); Text("  Restaurer") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            // Les DEUX boutons ont exactement la même largeur (chacun la moitié de la ligne) et la même hauteur ; le texte passe sur 2 lignes si besoin
+            Button(enabled = !occupe, modifier = Modifier.weight(1f).height(56.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                onClick = { phrase = ""; confirmation = ""; dialogue = "creer" }) { Icon(Icons.Filled.Save, null); Text(" Enregistrer une copie", maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = 14.sp) }
+            Button(enabled = !occupe, modifier = Modifier.weight(1f).height(56.dp), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                onClick = { ouvrirFichier.launch(arrayOf("*/*")) }) { Icon(Icons.Filled.FolderOpen, null); Text(" Restaurer une copie", maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = 14.sp) }
         }
         if (occupe) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) { CircularProgressIndicator(Modifier.size(20.dp)); Text("  Opération en cours…", fontSize = 13.sp, color = Bleu) }
         message?.let { Text(it, fontSize = 13.sp, color = BleuNuit, modifier = Modifier.padding(top = 8.dp)) }
