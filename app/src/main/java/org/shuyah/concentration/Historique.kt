@@ -64,6 +64,8 @@ class Historique private constructor(c: Context) : SQLiteOpenHelper(c.applicatio
     companion object {
         @Volatile private var instance: Historique? = null
         fun de(c: Context): Historique = instance ?: synchronized(this) { instance ?: Historique(c).also { instance = it } }
+        /** Ferme la base et oublie l'instance (avant de remplacer le fichier lors d'une restauration) : la prochaine lecture la rouvre. */
+        fun fermer() = synchronized(this) { instance?.close(); instance = null }
     }
 
     // ---- Mesures du forfait Internet ----
